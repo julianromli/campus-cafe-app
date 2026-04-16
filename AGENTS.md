@@ -1,2 +1,1 @@
 - After doing operations, store a changelog or summary of the changes in a markdown file on `docs/CHANGELOG.md`
-

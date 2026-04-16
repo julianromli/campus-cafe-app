@@ -2,14 +2,31 @@ import { Button } from "@campus-cafe/ui/components/button";
 import { Input } from "@campus-cafe/ui/components/input";
 import { Label } from "@campus-cafe/ui/components/label";
 import { useForm } from "@tanstack/react-form";
-import { useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import z from "zod";
 
-import { authClient } from "@/lib/auth-client";
+import { authClient, googleAuthEnabled } from "@/lib/auth-client";
 
-export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () => void }) {
+type SignInFormProps = {
+  onSwitchToSignUp?: () => void;
+};
+
+export default function SignInForm({ onSwitchToSignUp }: SignInFormProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect") ?? "/";
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await authClient.signIn.social({
+        callbackURL: redirectTo,
+        provider: "google",
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Google sign in failed");
+    }
+  };
 
   const form = useForm({
     defaultValues: {
@@ -24,7 +41,7 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
         },
         {
           onSuccess: () => {
-            navigate("/dashboard");
+            navigate(redirectTo);
             toast.success("Sign in successful");
           },
           onError: (error) => {
@@ -43,7 +60,19 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
 
   return (
     <div className="mx-auto mt-10 w-full max-w-md p-6">
-      <h1 className="mb-6 text-center text-3xl font-bold">Welcome Back</h1>
+      <div className="mb-6 space-y-2 text-center">
+        <h1 className="text-3xl font-bold">Welcome Back</h1>
+        <p className="text-sm text-muted-foreground">Sign in to manage reservations, orders, and your profile.</p>
+      </div>
+
+      {googleAuthEnabled ? (
+        <div className="mb-4 space-y-3">
+          <Button type="button" variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+            Continue with Google
+          </Button>
+          <div className="text-center text-xs uppercase tracking-[0.2em] text-muted-foreground">or</div>
+        </div>
+      ) : null}
 
       <form
         onSubmit={(e) => {
@@ -114,13 +143,15 @@ export default function SignInForm({ onSwitchToSignUp }: { onSwitchToSignUp: () 
       </form>
 
       <div className="mt-4 text-center">
-        <Button
-          variant="link"
-          onClick={onSwitchToSignUp}
-          className="text-indigo-600 hover:text-indigo-800"
-        >
-          Need an account? Sign Up
-        </Button>
+        {onSwitchToSignUp ? (
+          <Button variant="link" onClick={onSwitchToSignUp} className="text-indigo-600 hover:text-indigo-800">
+            Need an account? Sign Up
+          </Button>
+        ) : (
+          <Button variant="link" render={<Link to="/sign-up" />}>
+            Need an account? Sign Up
+          </Button>
+        )}
       </div>
     </div>
   );

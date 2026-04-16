@@ -2,14 +2,31 @@ import { Button } from "@campus-cafe/ui/components/button";
 import { Input } from "@campus-cafe/ui/components/input";
 import { Label } from "@campus-cafe/ui/components/label";
 import { useForm } from "@tanstack/react-form";
-import { useNavigate } from "react-router";
+import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
 import z from "zod";
 
-import { authClient } from "@/lib/auth-client";
+import { authClient, googleAuthEnabled } from "@/lib/auth-client";
 
-export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () => void }) {
+type SignUpFormProps = {
+  onSwitchToSignIn?: () => void;
+};
+
+export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect") ?? "/";
+
+  const handleGoogleSignIn = async () => {
+    try {
+      await authClient.signIn.social({
+        callbackURL: redirectTo,
+        provider: "google",
+      });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Google sign up failed");
+    }
+  };
 
   const form = useForm({
     defaultValues: {
@@ -26,7 +43,7 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
         },
         {
           onSuccess: () => {
-            navigate("/dashboard");
+            navigate(redirectTo);
             toast.success("Sign up successful");
           },
           onError: (error) => {
@@ -46,7 +63,19 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
 
   return (
     <div className="mx-auto mt-10 w-full max-w-md p-6">
-      <h1 className="mb-6 text-center text-3xl font-bold">Create Account</h1>
+      <div className="mb-6 space-y-2 text-center">
+        <h1 className="text-3xl font-bold">Create Account</h1>
+        <p className="text-sm text-muted-foreground">Create your customer account to unlock reservations and in-seat ordering.</p>
+      </div>
+
+      {googleAuthEnabled ? (
+        <div className="mb-4 space-y-3">
+          <Button type="button" variant="outline" className="w-full" onClick={handleGoogleSignIn}>
+            Continue with Google
+          </Button>
+          <div className="text-center text-xs uppercase tracking-[0.2em] text-muted-foreground">or</div>
+        </div>
+      ) : null}
 
       <form
         onSubmit={(e) => {
@@ -139,13 +168,15 @@ export default function SignUpForm({ onSwitchToSignIn }: { onSwitchToSignIn: () 
       </form>
 
       <div className="mt-4 text-center">
-        <Button
-          variant="link"
-          onClick={onSwitchToSignIn}
-          className="text-indigo-600 hover:text-indigo-800"
-        >
-          Already have an account? Sign In
-        </Button>
+        {onSwitchToSignIn ? (
+          <Button variant="link" onClick={onSwitchToSignIn} className="text-indigo-600 hover:text-indigo-800">
+            Already have an account? Sign In
+          </Button>
+        ) : (
+          <Button variant="link" render={<Link to="/sign-in" />}>
+            Already have an account? Sign In
+          </Button>
+        )}
       </div>
     </div>
   );

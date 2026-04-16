@@ -16,8 +16,11 @@ import {
 import { authClient } from "@/lib/auth-client";
 
 import type { Route } from "./+types/root";
-import Header from "./components/header";
 import { ThemeProvider } from "./components/theme-provider";
+
+const convex = new ConvexReactClient(env.VITE_CONVEX_URL, {
+  expectAuth: true,
+});
 
 export const links: Route.LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -47,9 +50,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
-  const convex = new ConvexReactClient(env.VITE_CONVEX_URL, {
-    expectAuth: true,
-  });
   return (
     <ConvexBetterAuthProvider client={convex} authClient={authClient}>
       <ThemeProvider
@@ -58,10 +58,7 @@ export default function App() {
         disableTransitionOnChange
         storageKey="vite-ui-theme"
       >
-        <div className="grid grid-rows-[auto_1fr] h-svh">
-          <Header />
-          <Outlet />
-        </div>
+        <Outlet />
         <Toaster richColors />
       </ThemeProvider>
     </ConvexBetterAuthProvider>
