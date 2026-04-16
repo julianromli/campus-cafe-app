@@ -1,0 +1,47 @@
+import { api } from "@campus-cafe/backend/convex/_generated/api";
+import { Button } from "@campus-cafe/ui/components/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@campus-cafe/ui/components/dropdown-menu";
+import { useQuery } from "convex/react";
+import { useNavigate } from "react-router";
+
+import { authClient } from "@/lib/auth-client";
+
+export default function UserMenu() {
+  const navigate = useNavigate();
+  const user = useQuery(api.auth.getCurrentUser);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={<Button variant="outline" />}>{user?.name}</DropdownMenuTrigger>
+      <DropdownMenuContent className="bg-card">
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem>{user?.email}</DropdownMenuItem>
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={() => {
+              authClient.signOut({
+                fetchOptions: {
+                  onSuccess: () => {
+                    navigate("/dashboard");
+                  },
+                },
+              });
+            }}
+          >
+            Sign Out
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
