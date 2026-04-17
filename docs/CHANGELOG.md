@@ -2,6 +2,13 @@
 
 ## 2026-04-17
 
+### Phase 8 — Polish (B-040…B-043)
+- **B-040 — Manual payment sync:** `packages/backend/convex/payments.ts` — `applyReservationPaymentSuccess` internal mutation (shared by webhook + sync); `listAllPayments` (admin, paginated, reservation join); `syncReservationPaymentStatus` action (polls Mayar `GET /hl/v1/transactions`). Admin UI: `apps/web/src/routes/admin.payments.tsx` with filters, sync button, mobile cards. Env: optional `MAYAR_TRANSACTIONS_URL` documented in `docs/NOTES.md`.
+- **B-041 — Skeletons:** `apps/web/src/components/skeletons/` (`event-list`, `event-detail`, `floor-plan`, `order-queue`, `table`); wired on homepage events, `/events`, event detail, reserve, staff reservations, admin tables, order queue, staff orders history.
+- **B-042 — PWA:** `vite-plugin-pwa` in `apps/web/vite.config.ts` (manifest, Workbox, runtime caching for fonts + images); `public/icons/*` from `icon.svg` via `scripts/generate-pwa-icons.mjs` (`bun run generate:icons`); `root.tsx` manifest + theme-color + icons; `InstallPromptBanner` in `customer-layout`.
+- **B-043 — Mobile:** `overflow-x-hidden` + `text-sm` on `body` in `root.tsx`; header hamburger + sheet; admin/staff mobile nav sheets; floor plan scroll hint + wider invisible hit targets on narrow viewports; order queue stacks on small screens; reservation form touch targets; staff table horizontal scroll wrapper.
+- **Backlog:** `docs/BACKLOG.md` — B-040…B-043 marked Done.
+
 ### Phase 7 — Notifications & email (B-007, B-008, B-035, B-037, B-039)
 - **Convex Resend component:** `packages/backend/convex/convex.config.ts` registers `@convex-dev/resend`; dependencies `@convex-dev/resend`, `resend`, and peer `convex-helpers` in `packages/backend/package.json`.
 - **`packages/backend/convex/emails.ts`:** `Resend` client with `testMode` from `RESEND_TEST_MODE`; internal mutations `sendBookingConfirmation` and `sendCancellationNotice` (HTML templates, `SITE_URL` / `EMAIL_FROM_ADDRESS`, try/catch logging). Booking email runs from `payments.mayarWebhook` after successful reservation payment; cancellation email + admin alerts scheduled from `reservations.cancel` via `ctx.scheduler.runAfter(0, …)`.

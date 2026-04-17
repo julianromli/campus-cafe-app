@@ -1,6 +1,7 @@
 import { Outlet } from "react-router";
 
 import Header from "@/components/header";
+import { InstallPromptBanner } from "@/components/pwa/install-prompt";
 
 export default function CustomerLayout() {
 	return (
@@ -9,6 +10,7 @@ export default function CustomerLayout() {
 			<main className="mx-auto flex w-full max-w-6xl flex-col px-4 py-6">
 				<Outlet />
 			</main>
+			<InstallPromptBanner />
 		</div>
 	);
 }

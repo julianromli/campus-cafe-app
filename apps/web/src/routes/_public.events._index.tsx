@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 
 import EventCard from "@/components/events/event-card";
+import { EventListSkeleton } from "@/components/skeletons/event-list-skeleton";
 
 export default function EventsListPage() {
 	const referenceTimestamp = useMemo(() => Date.now(), []);
@@ -16,14 +17,7 @@ export default function EventsListPage() {
 		return (
 			<div className="space-y-4">
 				<p className="text-muted-foreground text-sm">Memuat event…</p>
-				<div className="flex gap-4 overflow-x-auto pb-2">
-					{[1, 2, 3].map((i) => (
-						<div
-							key={i}
-							className="h-[300px] min-w-[240px] animate-pulse rounded-xl border border-border bg-muted/40"
-						/>
-					))}
-				</div>
+				<EventListSkeleton count={6} />
 			</div>
 		);
 	}

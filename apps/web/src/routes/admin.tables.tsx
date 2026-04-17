@@ -9,6 +9,7 @@ import {
 } from "@campus-cafe/ui/components/card";
 import { Input } from "@campus-cafe/ui/components/input";
 import { Label } from "@campus-cafe/ui/components/label";
+import { Skeleton } from "@campus-cafe/ui/components/skeleton";
 import { useMutation, useQuery } from "convex/react";
 import { PlusIcon } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -17,6 +18,7 @@ import { toast } from "sonner";
 import FloorPlan from "@/components/reserve/floor-plan";
 import type { FloorPlanTable } from "@/components/reserve/floor-plan-config";
 import SidePanel from "@/components/side-panel";
+import { FloorPlanSkeleton } from "@/components/skeletons/floor-plan-skeleton";
 
 type TableFormState = {
 	capacity: string;
@@ -200,9 +202,11 @@ export default function AdminTablesPage() {
 
 						<div className="flex flex-col gap-3">
 							{tables === undefined ? (
-								<p className="text-muted-foreground text-sm">
-									Loading tables...
-								</p>
+								<div className="flex flex-col gap-3">
+									{Array.from({ length: 5 }).map((_, i) => (
+										<Skeleton className="h-24 w-full rounded-md" key={i} />
+									))}
+								</div>
 							) : tables.length === 0 ? (
 								<p className="text-muted-foreground text-sm">
 									No tables created yet.
@@ -307,9 +311,7 @@ export default function AdminTablesPage() {
 					</CardHeader>
 					<CardContent className="flex flex-col gap-4">
 						{tables === undefined ? (
-							<p className="text-muted-foreground text-sm">
-								Loading floor plan...
-							</p>
+							<FloorPlanSkeleton />
 						) : (
 							<FloorPlan
 								draggable

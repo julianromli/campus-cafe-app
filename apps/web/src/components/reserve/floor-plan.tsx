@@ -1,6 +1,6 @@
 import { cn } from "@campus-cafe/ui/lib/utils";
 import type { PointerEvent as ReactPointerEvent } from "react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
 	clampTablePosition,
@@ -20,6 +20,20 @@ type DragState = {
 	startY: number;
 	tableId: string;
 };
+
+function useNarrowViewport() {
+	const [narrow, setNarrow] = useState(false);
+
+	useEffect(() => {
+		const mq = window.matchMedia("(max-width: 767px)");
+		const update = () => setNarrow(mq.matches);
+		update();
+		mq.addEventListener("change", update);
+		return () => mq.removeEventListener("change", update);
+	}, []);
+
+	return narrow;
+}
 
 type FloorPlanProps = {
 	draggable?: boolean;
@@ -43,6 +57,8 @@ export default function FloorPlan({
 	showInactive = false,
 	tables,
 }: FloorPlanProps) {
+	const isNarrow = useNarrowViewport();
+	const hitPad = isNarrow ? 8 : 0;
 	const svgRef = useRef<SVGSVGElement | null>(null);
 	const [dragState, setDragState] = useState<DragState | null>(null);
 	const [previewPositions, setPreviewPositions] = useState<
@@ -85,6 +101,11 @@ export default function FloorPlan({
 
 	return (
 		<div className="w-full overflow-x-auto rounded-lg border border-border bg-card p-3">
+			{isNarrow ? (
+				<p className="mb-2 text-center text-muted-foreground text-xs md:hidden">
+					← Geser untuk melihat seluruh denah →
+				</p>
+			) : null}
 			<svg
 				ref={svgRef}
 				className="min-w-[720px]"
@@ -166,6 +187,15 @@ export default function FloorPlan({
 							}}
 						>
 							<title>{`${table.label} • ${table.zone} • Kapasitas ${table.capacity}`}</title>
+							{hitPad > 0 ? (
+								<rect
+									fill="transparent"
+									height={FLOOR_PLAN_TABLE_HEIGHT + hitPad * 2}
+									width={FLOOR_PLAN_TABLE_WIDTH + hitPad * 2}
+									x={position.positionX - hitPad}
+									y={position.positionY - hitPad}
+								/>
+							) : null}
 							<rect
 								className={cn(
 									statusClasses.fill,

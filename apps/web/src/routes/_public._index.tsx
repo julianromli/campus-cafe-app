@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import { Link } from "react-router";
 
 import EventCard from "@/components/events/event-card";
+import { EventListSkeleton } from "@/components/skeletons/event-list-skeleton";
 
 export default function HomePage() {
 	const healthCheck = useQuery(api.healthCheck.get);
@@ -81,14 +82,7 @@ export default function HomePage() {
 				</div>
 
 				{events === undefined ? (
-					<div className="flex gap-4 overflow-x-auto pb-2">
-						{[1, 2, 3].map((i) => (
-							<div
-								key={i}
-								className="h-[300px] min-w-[240px] animate-pulse rounded-xl border border-border bg-muted/40"
-							/>
-						))}
-					</div>
+					<EventListSkeleton count={6} />
 				) : previewEvents.length === 0 ? (
 					<p className="text-muted-foreground text-sm">
 						Belum ada event yang dipublikasikan.

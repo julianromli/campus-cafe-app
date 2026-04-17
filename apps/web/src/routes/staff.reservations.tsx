@@ -15,6 +15,8 @@ import ConfirmDialog from "@/components/confirm-dialog";
 import FloorPlan from "@/components/reserve/floor-plan";
 import type { FloorPlanTable } from "@/components/reserve/floor-plan-config";
 import SidePanel from "@/components/side-panel";
+import { FloorPlanSkeleton } from "@/components/skeletons/floor-plan-skeleton";
+import { TableSkeleton } from "@/components/skeletons/table-skeleton";
 
 type StaffView = "floor" | "list";
 type StatusFilter = "all" | "pending" | "confirmed" | "cancelled";
@@ -246,9 +248,7 @@ export default function StaffReservationsPage() {
 						</CardHeader>
 						<CardContent className="flex flex-col gap-4">
 							{tables === undefined ? (
-								<p className="text-muted-foreground text-sm">
-									Loading floor plan...
-								</p>
+								<FloorPlanSkeleton />
 							) : (
 								<FloorPlan
 									selectableStatuses={["available", "booked", "occupied"]}
@@ -270,9 +270,7 @@ export default function StaffReservationsPage() {
 						</CardHeader>
 						<CardContent>
 							{reservations === undefined ? (
-								<p className="text-muted-foreground text-sm">
-									Loading reservations...
-								</p>
+								<TableSkeleton columns={7} rows={6} />
 							) : filteredReservations.length === 0 ? (
 								<p className="text-muted-foreground text-sm">
 									No reservations match the current filters.

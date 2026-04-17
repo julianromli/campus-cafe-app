@@ -52,10 +52,10 @@
 | B-037 | Email: cancellation notice (reservations)                     | Notifications | ✅ Done      | P1       | B-008, B-012               |
 | B-038 | *(Cancelled)* Email: event reminder (registrations)           | Notifications | ⛔ Cancelled | —        | —                          |
 | B-039 | Admin in-app notification: cancellation refund alert          | Notifications | ✅ Done      | P1       | B-007, B-012               |
-| B-040 | Admin: manual payment sync button                             | Polish        | ⬜ Todo      | P2       | B-013                      |
-| B-041 | Skeleton loading states (all data views)                      | Polish        | ⬜ Todo      | P2       | B-011, B-019, B-029, B-032 |
-| B-042 | PWA manifest + installable prompt                             | Polish        | ⬜ Todo      | P2       | —                          |
-| B-043 | Mobile responsive audit (375px+)                              | Polish        | ⬜ Todo      | P2       | all UI tasks               |
+| B-040 | Admin: manual payment sync button                             | Polish        | ✅ Done      | P2       | B-013                      |
+| B-041 | Skeleton loading states (all data views)                      | Polish        | ✅ Done      | P2       | B-011, B-019, B-029, B-032 |
+| B-042 | PWA manifest + installable prompt                             | Polish        | ✅ Done      | P2       | —                          |
+| B-043 | Mobile responsive audit (375px+)                              | Polish        | ✅ Done      | P2       | all UI tasks               |
 
 
 **Priority legend:** P0 = launch blocker · P1 = important · P2 = nice-to-have pre-launch
@@ -1200,7 +1200,7 @@ Superseded by PRD v1.3 — no registrant lists in-app.
 
 ### B-040 · Admin: Manual Payment Sync Button
 
-**Status:** ⬜ Todo | **Priority:** P2 | **Depends on:** B-013
+**Status:** ✅ Done | **Priority:** P2 | **Depends on:** B-013
 
 **File to edit:** `apps/web/src/routes/admin/payments.tsx`
 
@@ -1216,7 +1216,7 @@ This is the fallback for when the webhook fails to deliver.
 
 ### B-041 · Skeleton Loading States
 
-**Status:** ⬜ Todo | **Priority:** P2 | **Depends on:** B-011, B-019, B-029, B-032
+**Status:** ✅ Done | **Priority:** P2 | **Depends on:** B-011, B-019, B-029, B-032
 
 Add `Skeleton` components (from shadcn/ui) to every page that fetches async data. Pages to cover:
 
@@ -1232,7 +1232,7 @@ Add `Skeleton` components (from shadcn/ui) to every page that fetches async data
 
 ### B-042 · PWA Manifest + Installable Prompt
 
-**Status:** ⬜ Todo | **Priority:** P2 | **Depends on:** —
+**Status:** ✅ Done | **Priority:** P2 | **Depends on:** —
 
 **Files to create/edit:**
 
@@ -1244,7 +1244,7 @@ Add `Skeleton` components (from shadcn/ui) to every page that fetches async data
 
 ### B-043 · Mobile Responsive Audit
 
-**Status:** ⬜ Todo | **Priority:** P2 | **Depends on:** all UI tasks
+**Status:** ✅ Done | **Priority:** P2 | **Depends on:** all UI tasks
 
 Audit every customer-facing page at 375px viewport width. Fix issues:
 

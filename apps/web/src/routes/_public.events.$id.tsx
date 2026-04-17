@@ -11,6 +11,8 @@ import { useQuery } from "convex/react";
 import { ExternalLinkIcon } from "lucide-react";
 import { Link, useParams } from "react-router";
 
+import { EventDetailSkeleton } from "@/components/skeletons/event-detail-skeleton";
+
 function formatRange(startTime: number, endTime: number): string {
 	const start = new Date(startTime);
 	const end = new Date(endTime);
@@ -33,7 +35,7 @@ export default function EventDetailPage() {
 	}
 
 	if (event === undefined) {
-		return <p className="text-muted-foreground text-sm">Memuat event…</p>;
+		return <EventDetailSkeleton />;
 	}
 
 	if (event === null) {

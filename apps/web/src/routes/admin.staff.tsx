@@ -224,130 +224,134 @@ export default function AdminStaffPage() {
 							Belum ada staff terdaftar.
 						</p>
 					) : (
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Name</TableHead>
-									<TableHead>Email</TableHead>
-									<TableHead>Role</TableHead>
-									<TableHead>Joined</TableHead>
-									<TableHead className="text-right">Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{staffList.map((row) => {
-									const isSelf =
-										me !== undefined && me !== null && row._id === me._id;
-									const isPending = roleChangePendingId === row._id;
-									return (
-										<TableRow key={row._id}>
-											<TableCell className="font-medium">{row.name}</TableCell>
-											<TableCell className="text-muted-foreground">
-												{row.email}
-											</TableCell>
-											<TableCell>
-												<Badge
-													variant={roleBadgeVariant(row.role)}
-													className="capitalize"
-												>
-													{row.role}
-												</Badge>
-											</TableCell>
-											<TableCell className="text-muted-foreground">
-												{formatJoined(row.createdAt)}
-											</TableCell>
-											<TableCell className="text-right">
-												{isSelf ? (
-													<span className="text-muted-foreground text-xs">
-														Tidak dapat mengubah role sendiri
-													</span>
-												) : (
-													<div className="flex justify-end gap-2">
-														<DropdownMenu>
-															<DropdownMenuTrigger
-																render={
-																	<Button
-																		disabled={isPending}
-																		size="sm"
-																		variant="outline"
-																	/>
-																}
-															>
-																Change role
-																<ChevronDownIcon className="ml-1 size-4 opacity-60" />
-															</DropdownMenuTrigger>
-															<DropdownMenuContent
-																align="end"
-																className="bg-card"
-															>
-																<DropdownMenuItem
-																	disabled={row.role === "staff"}
-																	onClick={async () => {
-																		setRoleChangePendingId(row._id);
-																		try {
-																			await setRole({
-																				role: "staff",
-																				userId: row._id,
-																			});
-																			toast.success(
-																				"Role diubah menjadi Staff",
-																			);
-																		} catch (error) {
-																			toast.error(
-																				error instanceof Error
-																					? error.message
-																					: "Gagal mengubah role",
-																			);
-																		} finally {
-																			setRoleChangePendingId(null);
-																		}
-																	}}
+						<div className="-mx-1 max-w-[100vw] overflow-x-auto px-1 md:mx-0">
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>Name</TableHead>
+										<TableHead>Email</TableHead>
+										<TableHead>Role</TableHead>
+										<TableHead>Joined</TableHead>
+										<TableHead className="text-right">Actions</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{staffList.map((row) => {
+										const isSelf =
+											me !== undefined && me !== null && row._id === me._id;
+										const isPending = roleChangePendingId === row._id;
+										return (
+											<TableRow key={row._id}>
+												<TableCell className="font-medium">
+													{row.name}
+												</TableCell>
+												<TableCell className="text-muted-foreground">
+													{row.email}
+												</TableCell>
+												<TableCell>
+													<Badge
+														variant={roleBadgeVariant(row.role)}
+														className="capitalize"
+													>
+														{row.role}
+													</Badge>
+												</TableCell>
+												<TableCell className="text-muted-foreground">
+													{formatJoined(row.createdAt)}
+												</TableCell>
+												<TableCell className="text-right">
+													{isSelf ? (
+														<span className="text-muted-foreground text-xs">
+															Tidak dapat mengubah role sendiri
+														</span>
+													) : (
+														<div className="flex justify-end gap-2">
+															<DropdownMenu>
+																<DropdownMenuTrigger
+																	render={
+																		<Button
+																			disabled={isPending}
+																			size="sm"
+																			variant="outline"
+																		/>
+																	}
 																>
-																	Staff
-																</DropdownMenuItem>
-																<DropdownMenuItem
-																	disabled={row.role === "admin"}
-																	onClick={async () => {
-																		setRoleChangePendingId(row._id);
-																		try {
-																			await setRole({
-																				role: "admin",
-																				userId: row._id,
-																			});
-																			toast.success(
-																				"Role diubah menjadi Admin",
-																			);
-																		} catch (error) {
-																			toast.error(
-																				error instanceof Error
-																					? error.message
-																					: "Gagal mengubah role",
-																			);
-																		} finally {
-																			setRoleChangePendingId(null);
-																		}
-																	}}
+																	Change role
+																	<ChevronDownIcon className="ml-1 size-4 opacity-60" />
+																</DropdownMenuTrigger>
+																<DropdownMenuContent
+																	align="end"
+																	className="bg-card"
 																>
-																	Admin
-																</DropdownMenuItem>
-															</DropdownMenuContent>
-														</DropdownMenu>
-														<Button
-															disabled={isPending}
-															size="sm"
-															variant="destructive"
-															onClick={() => setRevokeUserId(row._id)}
-														>
-															Revoke access
-														</Button>
-													</div>
-												)}
-											</TableCell>
-										</TableRow>
-									);
-								})}
-							</TableBody>
-						</Table>
+																	<DropdownMenuItem
+																		disabled={row.role === "staff"}
+																		onClick={async () => {
+																			setRoleChangePendingId(row._id);
+																			try {
+																				await setRole({
+																					role: "staff",
+																					userId: row._id,
+																				});
+																				toast.success(
+																					"Role diubah menjadi Staff",
+																				);
+																			} catch (error) {
+																				toast.error(
+																					error instanceof Error
+																						? error.message
+																						: "Gagal mengubah role",
+																				);
+																			} finally {
+																				setRoleChangePendingId(null);
+																			}
+																		}}
+																	>
+																		Staff
+																	</DropdownMenuItem>
+																	<DropdownMenuItem
+																		disabled={row.role === "admin"}
+																		onClick={async () => {
+																			setRoleChangePendingId(row._id);
+																			try {
+																				await setRole({
+																					role: "admin",
+																					userId: row._id,
+																				});
+																				toast.success(
+																					"Role diubah menjadi Admin",
+																				);
+																			} catch (error) {
+																				toast.error(
+																					error instanceof Error
+																						? error.message
+																						: "Gagal mengubah role",
+																				);
+																			} finally {
+																				setRoleChangePendingId(null);
+																			}
+																		}}
+																	>
+																		Admin
+																	</DropdownMenuItem>
+																</DropdownMenuContent>
+															</DropdownMenu>
+															<Button
+																disabled={isPending}
+																size="sm"
+																variant="destructive"
+																onClick={() => setRevokeUserId(row._id)}
+															>
+																Revoke access
+															</Button>
+														</div>
+													)}
+												</TableCell>
+											</TableRow>
+										);
+									})}
+								</TableBody>
+							</Table>
+						</div>
 					)}
 				</CardContent>
 			</Card>

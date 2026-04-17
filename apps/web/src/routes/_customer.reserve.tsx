@@ -13,6 +13,7 @@ import { useSearchParams } from "react-router";
 import FloorPlan from "@/components/reserve/floor-plan";
 import type { FloorPlanTable } from "@/components/reserve/floor-plan-config";
 import ReservationFormSheet from "@/components/reserve/reservation-form-sheet";
+import { FloorPlanSkeleton } from "@/components/skeletons/floor-plan-skeleton";
 
 function isValidDateInput(value: string | null): value is string {
 	return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
@@ -48,9 +49,7 @@ export default function ReservePage() {
 					</CardHeader>
 					<CardContent className="flex flex-col gap-4">
 						{tables === undefined ? (
-							<p className="text-muted-foreground text-sm">
-								Loading table availability...
-							</p>
+							<FloorPlanSkeleton />
 						) : (
 							<FloorPlan
 								selectedTableId={selectedTableId ?? undefined}

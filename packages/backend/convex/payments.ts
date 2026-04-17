@@ -1,3 +1,4 @@
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
@@ -6,7 +7,9 @@ import {
 	httpAction,
 	internalMutation,
 	internalQuery,
+	query,
 } from "./_generated/server";
+import { requireRole } from "./lib/auth";
 
 const paymentTypeValidator = v.union(
 	v.literal("reservation"),
@@ -342,6 +345,54 @@ export const markPaid = internalMutation({
 	},
 });
 
+const applyResultValidator = v.union(
+	v.literal("applied"),
+	v.literal("already_paid"),
+	v.literal("not_found"),
+);
+
+export const applyReservationPaymentSuccess = internalMutation({
+	args: {
+		amount: v.optional(v.number()),
+		refId: v.string(),
+	},
+	returns: applyResultValidator,
+	handler: async (ctx, args) => {
+		const payment = await ctx.db
+			.query("payments")
+			.withIndex("by_refId", (q) => q.eq("refId", args.refId))
+			.unique();
+
+		if (!payment) {
+			return "not_found";
+		}
+
+		if (payment.status === "paid") {
+			return "already_paid";
+		}
+
+		if (payment.type === "reservation") {
+			await ctx.runMutation(internal.reservations.confirm, {
+				paymentRef: args.refId,
+				reservationId: payment.targetId as Id<"reservations">,
+			});
+		}
+
+		await ctx.runMutation(internal.payments.markPaid, {
+			amount: args.amount,
+			refId: args.refId,
+		});
+
+		if (payment.type === "reservation") {
+			await ctx.runMutation(internal.emails.sendBookingConfirmation, {
+				reservationId: payment.targetId as Id<"reservations">,
+			});
+		}
+
+		return "applied";
+	},
+});
+
 export const mayarWebhook = httpAction(async (ctx, request) => {
 	if (!validateWebhookSecret(request)) {
 		return jsonResponse({ message: "Unauthorized" }, 401);
@@ -356,35 +407,277 @@ export const mayarWebhook = httpAction(async (ctx, request) => {
 		return jsonResponse({ message: "Ignored" });
 	}
 
-	const payment = await ctx.runQuery(internal.payments.getByRefId, {
-		refId: payload.transactionId,
-	});
+	const result = await ctx.runMutation(
+		internal.payments.applyReservationPaymentSuccess,
+		{
+			amount: payload.amount,
+			refId: payload.transactionId,
+		},
+	);
 
-	if (!payment) {
+	if (result === "not_found") {
 		return jsonResponse({ message: "Payment not found" });
 	}
 
-	if (payment.status === "paid") {
+	if (result === "already_paid") {
 		return jsonResponse({ message: "Already processed" });
 	}
 
-	if (payment.type === "reservation") {
-		await ctx.runMutation(internal.reservations.confirm, {
-			paymentRef: payload.transactionId,
-			reservationId: payment.targetId as Id<"reservations">,
-		});
-	}
-
-	await ctx.runMutation(internal.payments.markPaid, {
-		amount: payload.amount,
-		refId: payload.transactionId,
-	});
-
-	if (payment.type === "reservation") {
-		await ctx.runMutation(internal.emails.sendBookingConfirmation, {
-			reservationId: payment.targetId as Id<"reservations">,
-		});
-	}
-
 	return jsonResponse({ message: "Webhook received successfully" });
+});
+
+const MAYAR_TRANSACTIONS_URL =
+	process.env.MAYAR_TRANSACTIONS_URL ??
+	"https://api.mayar.id/hl/v1/transactions";
+
+const paymentListRowValidator = v.object({
+	_creationTime: v.number(),
+	_id: v.id("payments"),
+	amount: v.number(),
+	createdAt: v.number(),
+	currency: v.literal("IDR"),
+	customerEmail: v.optional(v.string()),
+	customerName: v.optional(v.string()),
+	refId: v.string(),
+	status: paymentStatusValidator,
+	tableLabel: v.optional(v.string()),
+	tableZone: v.optional(v.string()),
+	targetId: v.string(),
+	type: paymentTypeValidator,
+});
+
+const paginatedPaymentsValidator = v.object({
+	continueCursor: v.union(v.string(), v.null()),
+	isDone: v.boolean(),
+	page: v.array(paymentListRowValidator),
+	pageStatus: v.optional(
+		v.union(
+			v.null(),
+			v.literal("SplitRecommended"),
+			v.literal("SplitDone"),
+			v.literal("SplitRequired"),
+		),
+	),
+	splitCursor: v.optional(v.union(v.string(), v.null())),
+});
+
+export const listAllPayments = query({
+	args: {
+		paginationOpts: paginationOptsValidator,
+		status: v.optional(paymentStatusValidator),
+	},
+	returns: paginatedPaymentsValidator,
+	handler: async (ctx, args) => {
+		await requireRole(ctx, "admin");
+
+		const base = ctx.db.query("payments").order("desc");
+		const filtered =
+			args.status === undefined
+				? base
+				: base.filter((q) => q.eq(q.field("status"), args.status));
+
+		const paginated = await filtered.paginate(args.paginationOpts);
+
+		const enriched = await Promise.all(
+			paginated.page.map(async (payment) => {
+				if (payment.type !== "reservation") {
+					return {
+						...payment,
+					};
+				}
+
+				const reservation = await ctx.db.get(
+					payment.targetId as Id<"reservations">,
+				);
+				if (!reservation) {
+					return { ...payment };
+				}
+
+				const table = await ctx.db.get(reservation.tableId);
+				const user = await ctx.db.get(reservation.userId);
+
+				return {
+					...payment,
+					customerEmail: user?.email,
+					customerName: user?.name,
+					tableLabel: table?.label,
+					tableZone: table?.zone,
+				};
+			}),
+		);
+
+		return {
+			...paginated,
+			page: enriched,
+		};
+	},
+});
+
+function extractMayarTransactionRows(body: unknown): unknown[] {
+	if (!isObject(body)) {
+		return [];
+	}
+
+	if (Array.isArray(body.data)) {
+		return body.data;
+	}
+
+	if (Array.isArray(body.transactions)) {
+		return body.transactions;
+	}
+
+	return [];
+}
+
+function transactionMatchesRef(item: unknown, refId: string): boolean {
+	if (!isObject(item)) {
+		return false;
+	}
+
+	const candidates: string[] = [];
+	if (typeof item.id === "string") {
+		candidates.push(item.id);
+	}
+	if (typeof item.paymentLinkTransactionId === "string") {
+		candidates.push(item.paymentLinkTransactionId);
+	}
+
+	const nested = item.paymentLinkTransaction;
+	if (isObject(nested) && typeof nested.id === "string") {
+		candidates.push(nested.id);
+	}
+
+	return candidates.some((c) => c === refId);
+}
+
+function getTransactionStatus(item: unknown): string | undefined {
+	if (!isObject(item)) {
+		return undefined;
+	}
+	return typeof item.status === "string" ? item.status : undefined;
+}
+
+export const syncReservationPaymentStatus = action({
+	args: {
+		refId: v.string(),
+	},
+	returns: v.object({
+		apiStatus: v.optional(v.string()),
+		result: v.union(
+			v.literal("paid"),
+			v.literal("pending"),
+			v.literal("not_found_in_mayar"),
+			v.literal("not_pending_locally"),
+			v.literal("wrong_type"),
+		),
+	}),
+	handler: async (
+		ctx,
+		args,
+	): Promise<{
+		apiStatus?: string;
+		result:
+			| "not_found_in_mayar"
+			| "not_pending_locally"
+			| "paid"
+			| "pending"
+			| "wrong_type";
+	}> => {
+		const user = await ctx.runQuery(api.users.getMe, {});
+		if (!user || user.role !== "admin") {
+			throw new Error("Unauthorized");
+		}
+
+		const payment = await ctx.runQuery(internal.payments.getByRefId, {
+			refId: args.refId,
+		});
+
+		if (!payment) {
+			throw new Error("Payment not found");
+		}
+
+		if (payment.type !== "reservation") {
+			return { result: "wrong_type" as const };
+		}
+
+		if (payment.status !== "pending") {
+			return { result: "not_pending_locally" as const };
+		}
+
+		const apiKey = getMayarApiKey();
+		let page = 1;
+		const pageSize = 50;
+		let matched: { item: unknown; status: string | undefined } | null = null;
+
+		for (;;) {
+			const url = new URL(MAYAR_TRANSACTIONS_URL);
+			url.searchParams.set("page", String(page));
+			url.searchParams.set("pageSize", String(pageSize));
+
+			const response = await fetch(url.toString(), {
+				headers: {
+					Authorization: `Bearer ${apiKey}`,
+				},
+			});
+
+			if (!response.ok) {
+				const text = await response.text();
+				throw new Error(
+					`Mayar transactions request failed: ${response.status} ${text || response.statusText}`,
+				);
+			}
+
+			const body: unknown = await response.json();
+			const rows = extractMayarTransactionRows(body);
+
+			for (const item of rows) {
+				if (transactionMatchesRef(item, args.refId)) {
+					matched = {
+						item,
+						status: getTransactionStatus(item),
+					};
+					break;
+				}
+			}
+
+			if (matched) {
+				break;
+			}
+
+			const bodyObj = isObject(body) ? body : {};
+			const hasMore =
+				typeof bodyObj.hasMore === "boolean" ? bodyObj.hasMore : false;
+			const pageCount =
+				typeof bodyObj.pageCount === "number" ? bodyObj.pageCount : page;
+
+			if (!hasMore || page >= pageCount || rows.length === 0) {
+				break;
+			}
+
+			page += 1;
+		}
+
+		if (!matched || matched.status !== "SUCCESS") {
+			return {
+				apiStatus: matched?.status,
+				result:
+					matched === null
+						? ("not_found_in_mayar" as const)
+						: ("pending" as const),
+			};
+		}
+
+		const applyResult = await ctx.runMutation(
+			internal.payments.applyReservationPaymentSuccess,
+			{
+				refId: args.refId,
+			},
+		);
+
+		if (applyResult === "already_paid" || applyResult === "applied") {
+			return { apiStatus: "SUCCESS", result: "paid" as const };
+		}
+
+		return { apiStatus: matched.status, result: "pending" as const };
+	},
 });

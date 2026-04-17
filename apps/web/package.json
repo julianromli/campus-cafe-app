@@ -6,7 +6,8 @@
 		"build": "react-router build",
 		"start": "react-router-serve ./build/server/index.js",
 		"typecheck": "react-router typegen && tsc",
-		"dev:bare": "react-router dev"
+		"dev:bare": "react-router dev",
+		"generate:icons": "node scripts/generate-pwa-icons.mjs"
 	},
 	"dependencies": {
 		"@campus-cafe/backend": "workspace:*",
@@ -40,8 +41,10 @@
 		"alchemy": "catalog:",
 		"react-router-devtools": "^1.1.0",
 		"tailwindcss": "catalog:",
+		"sharp": "^0.33.5",
 		"typescript": "^5.8.3",
 		"vite": "^7.2.7",
+		"vite-plugin-pwa": "^0.21.1",
 		"vite-tsconfig-paths": "^5.1.4"
 	}
 }

@@ -91,6 +91,7 @@ export default function ReservationFormSheet({
 				Cancel
 			</Button>
 			<Button
+				className="min-h-11 w-full sm:w-auto"
 				disabled={!table || submitting}
 				onClick={async () => {
 					if (!table) {
@@ -169,7 +170,7 @@ export default function ReservationFormSheet({
 					<Label htmlFor="reservation-start-time">Start time</Label>
 					<select
 						id="reservation-start-time"
-						className="h-8 rounded-none border border-input bg-transparent px-2.5 text-xs"
+						className="min-h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm"
 						value={startTime}
 						onChange={(event) => setStartTime(event.target.value)}
 					>
@@ -186,6 +187,7 @@ export default function ReservationFormSheet({
 					<div className="flex flex-wrap gap-2">
 						{[1, 2, 3].map((option) => (
 							<Button
+								className="min-h-11 min-w-[44px] flex-1 sm:flex-none"
 								key={option}
 								variant={durationHours === option ? "default" : "outline"}
 								onClick={() => setDurationHours(option as DurationHours)}

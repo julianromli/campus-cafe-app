@@ -6,6 +6,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@campus-cafe/ui/components/card";
+import { Skeleton } from "@campus-cafe/ui/components/skeleton";
 import {
 	Tabs,
 	TabsContent,
@@ -103,7 +104,11 @@ export default function StaffOrdersPage() {
 				</TabsContent>
 				<TabsContent className="mt-4 text-sm" value="history">
 					{history === undefined ? (
-						<p className="text-muted-foreground text-sm">Memuat…</p>
+						<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+							{Array.from({ length: 6 }).map((_, i) => (
+								<Skeleton className="h-28 w-full rounded-lg" key={i} />
+							))}
+						</div>
 					) : history.length === 0 ? (
 						<p className="text-muted-foreground text-sm">
 							Belum ada pesanan selesai hari ini.

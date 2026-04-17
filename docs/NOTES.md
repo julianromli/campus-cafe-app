@@ -56,3 +56,12 @@ bun convex env set RESEND_TEST_MODE false
 
 `SITE_URL` dipakai untuk link “Lihat reservasiku” di email konfirmasi.
 
+## Mayar.id (pembayaran)
+
+Set di Convex (`packages/backend`):
+
+- `MAYAR_API_KEY` — wajib untuk membuat link pembayaran dan polling status transaksi (admin **Sync Status**).
+- `MAYAR_WEBHOOK_SECRET` — opsional; jika diset, webhook menolak request tanpa header secret yang cocok.
+- `MAYAR_PAYMENT_CREATE_URL` — opsional; override endpoint **create** (default: `https://api.mayar.id/hl/v1/payment/create`).
+- `MAYAR_TRANSACTIONS_URL` — opsional; override endpoint **daftar transaksi** untuk sinkron manual (default: `https://api.mayar.id/hl/v1/transactions`).
+
