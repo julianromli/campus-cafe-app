@@ -46,6 +46,20 @@ npx convex env remove NAMA
 
 Nilai sensitif bisa di-set interaktif (`npx convex env set API_KEY`) atau dari file (`--from-file`) agar tidak masuk history shell.
 
+### Demo seed (mock data lokal)
+
+Untuk mengisi **meja**, **menu**, dan **event** ketika database masih kosong (idempoten per koleksi), ada mutation `seed:seedDemoData`. Hanya untuk **deployment dev** (atau staging): set secret di Convex, **jangan** memakai secret produksi yang sama atau biarkan fitur ini aktif di prod tanpa kebutuhan jelas.
+
+```bash
+cd packages/backend
+npx convex env set DEMO_SEED_SECRET 'ganti-dengan-string-acak'
+npx convex run seed:seedDemoData '{"secret":"ganti-dengan-string-acak"}'
+```
+
+- **Syarat:** minimal satu baris di tabel `users` (mis. daftar lewat `/sign-up`) agar event demo punya `createdBy`.
+- **Isi:** meja bertanda `[Demo]` (campuran available / booked / occupied / inactive), kategori & item menu (satu item `available: false`), satu event **published** dengan `https://…` valid dan opsional satu **draft** jika belum ada event sama sekali.
+- Jalankan ulang aman: koleksi yang sudah berisi dilewati (tidak diduplikasi).
+
 ---
 
 ## Environment — Frontend (`apps/web/.env`)

@@ -21,6 +21,7 @@ import type * as orders from "../orders.js";
 import type * as payments from "../payments.js";
 import type * as privateData from "../privateData.js";
 import type * as reservations from "../reservations.js";
+import type * as seed from "../seed.js";
 import type * as tables from "../tables.js";
 import type * as users from "../users.js";
 
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   payments: typeof payments;
   privateData: typeof privateData;
   reservations: typeof reservations;
+  seed: typeof seed;
   tables: typeof tables;
   users: typeof users;
 }>;
