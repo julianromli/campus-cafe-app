@@ -2,9 +2,9 @@
 
 ## Campus Cafe — Full-Featured Campus Cafe Platform
 
-**Version:** 1.2  
+**Version:** 1.3  
 **Status:** Draft  
-**Date:** April 16, 2026  
+**Date:** April 17, 2026  
 **Stack:** React Router · Convex · Better-Auth · shadcn/ui · TailwindCSS · Mayar.id · Cloudflare
 
 ---
@@ -13,11 +13,11 @@
 
 ### Problem Statement
 
-Campus Cafe currently manages all table reservations through WhatsApp, creating a frustrating experience for both customers and management. Customer messages get buried, bookings are missed, and there is no unified view of availability. Additionally, the cafe's primary business value — hosting community events (gaming nights, workshops, meetups) — lacks a dedicated discovery and registration surface.
+Campus Cafe currently manages all table reservations through WhatsApp, creating a frustrating experience for both customers and management. Customer messages get buried, bookings are missed, and there is no unified view of availability. Additionally, the cafe's primary business value — hosting community events (gaming nights, workshops, meetups) — lacks a lightweight way for customers to see what is coming up and find the official event page.
 
 ### Proposed Solution
 
-A full-stack web platform that unifies table reservations, event discovery & ticketing, in-seat food ordering, and cafe management operations into a single, real-time product. Customers get a cinema-style interactive table map, an event calendar with registration, and the ability to order food from their seat. Staff and admins get a live operations dashboard.
+A full-stack web platform that unifies table reservations, **event discovery (information-only)**, in-seat food ordering, and cafe management operations into a single, real-time product. Customers get a cinema-style interactive table map, a curated list of upcoming and ongoing events with links to each event’s official page (registration and ticketing happen **outside** this app), and the ability to order food from their seat. Staff and admins get a live operations dashboard.
 
 ### Success Criteria
 
@@ -26,7 +26,7 @@ A full-stack web platform that unifies table reservations, event discovery & tic
 | --- | ----------------------------- | ----------------------------------------------------- |
 | 1   | WhatsApp reservation volume   | Reduced by **≥ 90%** within 30 days of launch         |
 | 2   | Table booking completion rate | **≥ 75%** of sessions that reach the reservation step |
-| 3   | Event registration            | **≥ 60%** of advertised events reach their seat limit |
+| 3   | Event discovery engagement    | **≥ 40%** of homepage sessions click through to an event detail or external event link |
 | 4   | In-seat order adoption        | **≥ 40%** of booked tables use in-app food ordering   |
 | 5   | Page load time (LCP)          | **< 2.5 s** on 4G mobile connection                   |
 
@@ -41,7 +41,7 @@ A full-stack web platform that unifies table reservations, event discovery & tic
 | Persona                  | Description                                                                    | Key Goals                                                       |
 | ------------------------ | ------------------------------------------------------------------------------ | --------------------------------------------------------------- |
 | **The Campus Regular**   | Student/young professional who visits the cafe 2–4×/week                       | Reserve a favorite spot quickly, discover upcoming events       |
-| **The Event Attendee**   | Person who primarily discovers the cafe through events (Nobar, Workshop, etc.) | Find and register for events, book a table for the event night  |
+| **The Event Attendee**   | Person who primarily discovers the cafe through events (Nobar, Workshop, etc.) | See what is on, open the official event page, optionally reserve a table separately |
 | **The Cafe Staff**       | Frontline employee managing orders and walk-ins                                | See live reservations, manage menu availability                 |
 | **The Cafe Admin/Owner** | Owner or manager responsible for operations and growth                         | Full control over tables, events, menu, users, and revenue data |
 
@@ -53,7 +53,7 @@ A full-stack web platform that unifies table reservations, event discovery & tic
 | --------------------------- | -------- | ------------- | ------ |
 | View menu                   | ✅        | ✅             | ✅      |
 | Reserve table               | ✅        | ✅ (on behalf) | ✅      |
-| Register for event          | ✅        | ✅             | ✅      |
+| View event listings         | ✅        | ✅             | ✅      |
 | Place in-seat food order    | ✅        | ✅ (on behalf) | ✅      |
 | View live reservation board | ❌        | ✅             | ✅      |
 | Release table to available  | ❌        | ✅             | ✅      |
@@ -147,62 +147,49 @@ A full-stack web platform that unifies table reservations, event discovery & tic
 
 ---
 
-### 3.2 Event Discovery & Registration
+### 3.2 Event Discovery (Information-Only)
 
-**Core Flow:** Homepage displays upcoming events → customer clicks event → reads details → registers (free or paid) → optionally links to a table reservation for the event night.
+**Scope:** Events in this app are **for discovery and information** — customers see what is **upcoming or currently ongoing** at the cafe. **Registration, ticketing, and payment for events are not handled in this app**; the customer is directed to the **official external event page** (e.g. organizer website, ticketing partner, or social link) for anything beyond reading the summary here.
+
+**Core Flow:** Homepage displays upcoming/ongoing events → customer opens an event → reads details on the in-app detail page → primary CTA opens the **external official page** in a new tab (or same-tab navigation to that URL). Table reservation remains a **separate** flow (`Reserve a Table`) and is not coupled to event signup.
 
 #### User Stories
 
 **US-05 — Discover Events**
 
-> As a customer, I want to see a list of upcoming events at the cafe on the homepage, so I know what's happening and can plan to attend.
+> As a customer, I want to see a list of upcoming and ongoing events at the cafe on the homepage, so I know what's happening and can decide what to explore further.
 
 **Acceptance Criteria:**
 
-- Homepage Event section shows at minimum: event name, date/time, category tag (e.g., Nobar, Workshop, Meetup), cover image, available seats count.
-- Events are sorted chronologically (soonest first).
-- Past events are hidden from the public list (or shown in an "Archive" section).
-- Events with 0 seats remaining are marked "Full" but still visible.
+- Homepage Event section shows at minimum: event name, date/time (or “Sedang berlangsung” when applicable), category tag (e.g., Nobar, Workshop, Meetup), cover image.
+- Events are sorted chronologically (soonest first). Ongoing events (current time within start–end) may be highlighted or pinned per UX spec.
+- Past events (ended) are **not** shown in the default public list.
+- Cards link to the in-app event detail route `/events/:id` (or equivalent).
 
 ---
 
-**US-06 — Event Detail & Registration**
+**US-06 — Event Detail & External Link**
 
-> As a customer, I want to read the full details of an event and register (paying if required), so I have a confirmed spot.
+> As a customer, I want to read clear details about an event in the app and then continue on the official event page for registration or more info, so I am not confused about where the real signup happens.
 
 **Acceptance Criteria:**
 
-- Event detail page includes: full description, schedule, host/organizer name, cover image/gallery, capacity, seats remaining, ticket price (or "Free").
-- Registration button is disabled when event is full.
-- Paid events process payment via Mayar.id before confirming registration.
-- Free events require only a name/email (or account login) to register.
-- After registration, customer sees a confirmation screen with a QR code or unique code for check-in.
-- Seat count updates in real time on the detail page as registrations come in.
+- Event detail page includes: title, full description (rich text or markdown), schedule (start & end), host/organizer name (optional), cover image, category.
+- **Primary CTA** is a single clear action (e.g. “Buka halaman resmi event” / “Info & daftar di situs penyelenggara”) that navigates to the **admin-configured external URL** (`https://…`). No in-app registration, no ticket purchase, no QR ticket, no seat inventory tied to signups in this app.
+- Optional secondary link: “Reservasi meja” → `/reserve` (no requirement to pass `eventId` for signup; optional prefill of date is a UX nicety, not tied to event registration).
 
 ---
 
-**US-07 — Link Event Registration to Table**
+**US-07 — Admin: Curate Event Listings**
 
-> As a customer registering for an event, I want to optionally reserve a table for the event night as part of the same flow, so I don't lose my preferred spot.
-
-**Acceptance Criteria:**
-
-- After event registration confirmation, an optional prompt: "Want to also reserve a table for this event?" that deep-links to the reservation flow with the event's date/time pre-filled.
-- Tables reserved during an event flow are tagged with the event ID for admin visibility.
-
----
-
-**US-08 — Admin: Create & Manage Events**
-
-> As an admin, I want to create, edit, publish, and delete events, so the cafe's event calendar stays up to date.
+> As an admin, I want to create, edit, publish, and remove event listings, so customers always see accurate dates and the correct external link.
 
 **Acceptance Criteria:**
 
-- Create event form includes: title, description (rich text), date/time (start & end), category, cover image upload, capacity (seat limit), ticket price (0 = free), registration deadline.
-- Admin can toggle event status: Draft (not public) / Published (visible to customers).
-- Admin can view registered attendees list with export to CSV.
-- Admin can send a notification/reminder to all registered attendees (in-app notification + optional email).
-- Deleting a published event with existing registrations requires explicit confirmation and triggers automated notice to registrants.
+- Create/edit form includes: title, description (rich text), date/time (start & end), category, cover image upload, **external URL** (required for published events), status Draft / Published.
+- Published events appear in the public listing; drafts do not.
+- No attendees list, CSV export of registrants, or in-app reminders to “registered users” — those belong on the external platform.
+- Delete is allowed with a confirmation dialog; no “registrant” guardrails inside this app.
 
 ---
 
@@ -269,7 +256,7 @@ A full-stack web platform that unifies table reservations, event discovery & tic
 
 **US-12 — Admin: View Live Operations Overview**
 
-> As an admin, I want a real-time dashboard showing today's reservations, event registrations, and order revenue, so I can monitor operations at a glance.
+> As an admin, I want a real-time dashboard showing today's reservations and order revenue, so I can monitor operations at a glance.
 
 **Acceptance Criteria:**
 
@@ -277,8 +264,8 @@ A full-stack web platform that unifies table reservations, event discovery & tic
   - Total reservations booked vs. capacity
   - Table occupancy heatmap
   - Active in-seat orders
-  - Revenue (from reservations + event tickets + food orders)
-- 30-day trend charts: reservations, event attendance, food order volume.
+  - Revenue (from reservations + food orders; **not** from in-app event ticketing — events are listing-only)
+- 30-day trend charts: reservations, food order volume.
 - All data refreshes without manual reload.
 
 ---
@@ -289,7 +276,7 @@ A full-stack web platform that unifies table reservations, event discovery & tic
 
 **US-13 — Customer: Register & Login**
 
-> As a new customer, I want to create an account with email/password or social login, so I can manage my bookings and registrations.
+> As a new customer, I want to create an account with email/password or social login, so I can manage my bookings and orders.
 
 **Acceptance Criteria:**
 
@@ -326,7 +313,8 @@ The following are explicitly **out of scope** for v1.0 to protect timeline and f
 | 4   | Community event hosting (customer-created events)    | Only admin creates events in v1.0          |
 | 5   | Third-party delivery integrations (GoFood, GrabFood) | Out of scope; in-cafe only                 |
 | 6   | AI-powered recommendations                           | Phase 2 consideration                      |
-| 7   | Printed kitchen receipt / POS hardware               | Digital-only in v1.0                       |
+| 7   | In-app event registration, ticketing, or attendee management | Out of scope; events are informational with external links |
+| 8   | Printed kitchen receipt / POS hardware               | Digital-only in v1.0                       |
 
 
 ---
@@ -346,7 +334,7 @@ The following are explicitly **out of scope** for v1.0 to protect timeline and f
 │  Convex Backend                                   │
 │  ├── Auth layer (Better-Auth integration)         │
 │  ├── Queries    (tables, events, menu, orders)    │
-│  ├── Mutations  (book table, register event, etc.)│
+│  ├── Mutations  (book table, manage event listings, etc.)│
 │  └── Actions    (Mayar.id payment webhook handler)│
 └───────────────────┬─────────────────────────────┘
                     │
@@ -389,20 +377,14 @@ Indexes: `by_tableId_startTime`, `by_userId`, `by_status`
 #### `events`
 
 ```
-_id, title, description, coverImage, category, startTime, endTime,
-capacity, seatsRemaining, ticketPrice, status: "draft"|"published",
-registrationDeadline, createdBy, createdAt
+_id, title, description, coverImage?, category, startTime, endTime,
+externalUrl: string (https URL to official event page),
+status: "draft"|"published", createdBy, createdAt
 ```
 
 Indexes: `by_status_startTime`
 
-#### `eventRegistrations`
-
-```
-_id, eventId, userId, ticketCode, paymentRef, status: "confirmed"|"cancelled", createdAt
-```
-
-Indexes: `by_eventId`, `by_userId`
+> **Note:** Legacy or experimental tables (e.g. `eventRegistrations`, `event_ticket` payment types) may exist in code from earlier designs; the **product scope** for events is listing + external link only — no in-app registration or ticket sales.
 
 #### `menuCategories`
 
@@ -435,7 +417,7 @@ Indexes: `by_tableId`, `by_status`, `by_userId`
 #### `payments`
 
 ```
-_id, refId (Mayar.id), type: "reservation"|"event_ticket"|"food_order",
+_id, refId (Mayar.id), type: "reservation"|"food_order",
 targetId, amount, currency: "IDR", status: "pending"|"paid"|"failed"|"refunded", createdAt
 ```
 
@@ -445,7 +427,7 @@ Indexes: `by_refId`, `by_targetId`
 
 #### Mayar.id Payment Gateway
 
-- **Payment flow:** Frontend initiates payment → Convex Action creates payment link via Mayar.id API → Customer redirected to Mayar.id hosted checkout → Mayar.id fires `payment.received` webhook to Convex HTTP Action → Convex verifies payload → confirms booking/registration atomically.
+- **Payment flow:** Frontend initiates payment → Convex Action creates payment link via Mayar.id API → Customer redirected to Mayar.id hosted checkout → Mayar.id fires `payment.received` webhook to Convex HTTP Action → Convex verifies payload → confirms booking (e.g. table reservation) atomically. Event listings do not use Mayar for ticketing.
 - **Webhook security:** Verify Mayar.id signature header on every inbound event; reject requests without a valid signature.
 - **Idempotency:** Webhook handler checks if `transactionId` was already processed before mutating state, preventing duplicate confirmations.
 - **Refund policy:** Refunds are **fully manual** — no Refund API is used. When a cancellation occurs: (1) app shows customer a message confirming the cancellation and expected refund timeline, (2) admin receives an in-app notification with transaction details, (3) admin processes the refund manually via the Mayar.id merchant dashboard.
@@ -460,7 +442,7 @@ Indexes: `by_refId`, `by_targetId`
 
 - Table availability: `useQuery(api.tables.list)` — reactive; updates on any table mutation.
 - Order queue: `useQuery(api.orders.listActive)` — staff screen auto-refreshes.
-- Event seat count: `useQuery(api.events.get, { id })` — `seatsRemaining` decrements on registration.
+- Event detail (public): `useQuery(api.events.getById, { id })` — returns published event fields including `externalUrl` for the CTA (no seat inventory in product scope).
 
 ### 5.4 Security & Privacy
 
@@ -480,7 +462,7 @@ Indexes: `by_refId`, `by_targetId`
 ## 6. UX & Design Guidelines
 
 - **Interactive Table Map:** SVG or canvas-based floor plan. Tables are clickable elements. Color-coded: Green = Available, Red = Booked/Occupied, Gray = Inactive. Tooltip on hover shows table name, capacity, and zone. Responsive for mobile.
-- **Event Cards:** Cover-image-led card design. "Seats remaining" counter with urgency styling when < 10% remaining.
+- **Event Cards:** Cover-image-led card design; emphasize date/time and category; primary intent is **inform** and route to detail → external official page.
 - **QR Code Landing:** Scanning a table QR opens a fast-loading menu page (no redirect loops). If not logged in, a bottom-sheet login prompt appears — customer can still browse menu while unauthenticated but must log in to place an order.
 - **Order Status:** Progress stepper (Pending → Preparing → Ready) displayed prominently on the customer's order screen.
 - **Admin Dashboard:** Dark/neutral-toned data dashboard (shadcn/ui charts). Key metrics above the fold, accessible from a sidebar nav.
@@ -517,10 +499,8 @@ Indexes: `by_refId`, `by_targetId`
 
 ### Phase 2 — Events & Menu (Weeks 5–8)
 
-- Event creation & management (admin)
-- Event discovery homepage & detail page
-- Event registration (free + paid via Mayar.id)
-- Seat count real-time updates
+- Event listing CRUD & publish (admin), including **external URL**
+- Event discovery on homepage & in-app event detail with **outbound CTA** to official page
 - Menu categories & item management (admin/staff)
 - Customer-facing menu display
 - In-seat food ordering (basic flow)
@@ -529,9 +509,9 @@ Indexes: `by_refId`, `by_targetId`
 
 - Staff order queue (live kitchen view)
 - In-seat order status tracking (customer)
-- Admin analytics dashboard (revenue, reservations, events)
-- Event–reservation link (book table from event page)
-- Email notifications (booking confirmation, event reminder)
+- Admin analytics dashboard (revenue, reservations)
+- Optional: prominent “Reservasi meja” from event detail (same app; not tied to external event signup)
+- Email notifications (booking confirmation; optional operational emails — not event-attendee lists)
 - PWA manifest (installable on mobile)
 - Performance hardening & accessibility audit
 
@@ -553,7 +533,7 @@ Indexes: `by_refId`, `by_targetId`
 | #     | Question                                             | Decision                                                                                                                                                   |
 | ----- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ~~1~~ | Time slot model for reservations?                    | **Model C** — Customer picks start time + duration (1 / 2 / 3 hours)                                                                                       |
-| ~~2~~ | Refund policy for paid reservations & event tickets? | **Manual** — App shows cancellation message to customer; admin receives in-app notification and processes refund manually via Mayar.id dashboard           |
+| ~~2~~ | Refund policy for paid **table** reservations? | **Manual** — App shows cancellation message to customer; admin receives in-app notification and processes refund manually via Mayar.id dashboard (in-app event ticketing N/A) |
 | ~~3~~ | Turnover time / minimum booking duration?            | **None** — Table availability is controlled entirely by admin/staff. No automatic release; staff manually marks a table as Available after customer leaves |
 
 
@@ -578,4 +558,4 @@ Indexes: `by_refId`, `by_targetId`
 ---
 
 *Document owner: Development Team*  
-*Last updated: April 16, 2026 — v1.2: Resolved all Open Questions. Static QR (Model A) with walk-in support; Resend for email; in-seat ordering open to both reserved and walk-in customers.*
+*Last updated: April 17, 2026 — v1.3: Events scoped as information-only discovery with external official links; no in-app event registration/ticketing per product direction.*

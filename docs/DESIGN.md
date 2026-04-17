@@ -2,13 +2,13 @@
 
 ## Campus Cafe — Page-by-Page Design Guide for AI Prototype Generation
 
-**Version:** 1.0 | **Date:** April 16, 2026
+**Version:** 1.1 | **Date:** April 17, 2026
 
 ---
 
 ## Context for the AI Agent
 
-Campus Cafe is a web platform for a real Indonesian campus cafe that hosts frequent community events (gaming nights, workshops, meetups). The app unifies three experiences: **table reservations** (like cinema seat booking), **event discovery & ticketing**, and **in-seat food ordering via QR code**. The audience is students and young professionals (18–28 years old).
+Campus Cafe is a web platform for a real Indonesian campus cafe that hosts frequent community events (gaming nights, workshops, meetups). The app unifies three experiences: **table reservations** (like cinema seat booking), **event discovery (information-only; outbound link to the official event page)**, and **in-seat food ordering via QR code**. The audience is students and young professionals (18–28 years old).
 
 **What this app is NOT:**
 
@@ -158,8 +158,8 @@ Load via: `@fontsource/plus-jakarta-sans`, `@fontsource/inter`, `@fontsource/jet
 │  │  [Kategori badge: "Event Minggu Ini"]               │ │
 │  │  HEADLINE: "Nongkrong Seru,                         │ │
 │  │             Lebih Dari Sekadar Kopi."               │ │
-│  │  Subtext: "Reservasi meja, daftar event, pesan      │ │
-│  │            makanan — semua dari satu tempat."       │ │
+│  │  Subtext: "Reservasi meja, lihat event mendatang,   │ │
+│  │            pesan makanan — semua dari satu tempat." │ │
 │  │                                                     │ │
 │  │  [🗓 Lihat Semua Event] [⬛ Reservasi Meja →]        │ │
 │  └─────────────────────────────────────────────────────┘ │
@@ -173,7 +173,7 @@ Load via: `@fontsource/plus-jakarta-sans`, `@fontsource/inter`, `@fontsource/jet
 │  │ [badge] │ │ [badge] │ │ [badge] │ │         │        │
 │  │ Title   │ │ Title   │ │ Title   │ │         │        │
 │  │ Date    │ │ Date    │ │ Date    │ │         │        │
-│  │ 12 seat │ │  PENUH  │ │ 5 seat  │ │         │        │
+│  │ Detail→ │ │ Detail→ │ │ Detail→ │ │         │        │
 │  └─────────┘ └─────────┘ └─────────┘ └─────────┘        │
 │                                                           │
 │  ABOUT / LOCATION SECTION (static)                        │
@@ -236,11 +236,8 @@ Load via: `@fontsource/plus-jakarta-sans`, `@fontsource/inter`, `@fontsource/jet
   - Meetup → `bg-emerald-600`
   - Other → `bg-amber-600`
 - Title: `Plus Jakarta Sans 600`, 2 lines max, white
-- Date: `Inter 400`, small, `--muted-foreground`, with calendar icon
-- Seats counter: bottom of card
-  - > 10 seats: green dot + "12 kursi tersisa"
-  - ≤ 10 seats: amber dot + "5 kursi tersisa" (urgency)
-  - 0 seats: full-width red banner "PENUH" over bottom of image
+- Date: `Inter 400`, small, `--muted-foreground`, with calendar icon; optional pill **"Berlangsung"** when `now` is between start and end
+- Footer line: subtle text + icon, e.g. "Info lengkap di halaman event" (card navigates to in-app `/events/:id`, not directly to external URL — keeps one consistent detail page)
 - Hover: card lifts 4px, subtle amber glow on border
 
 **Bottom Navigation (mobile only):**
@@ -539,7 +536,7 @@ Desktop (right side sheet, 420px wide):    Mobile (bottom sheet, full-width):
 
 ## Page 8 — Event Detail (`/events/:id`)
 
-**Purpose:** Full event information + registration CTA. The "movie detail page" equivalent.
+**Purpose:** In-app **information page** for a single listing. Customers read the summary here; **signup, tickets, and payment happen on the official external page** (opened via primary CTA). Not a "checkout" screen.
 
 ### Layout (Desktop)
 
@@ -554,18 +551,17 @@ Desktop (right side sheet, 420px wide):    Mobile (bottom sheet, full-width):
 │  │  [Workshop badge]              │ │  Sabtu, 26 Apr   │ │
 │  │  "UI Design Workshop           │ │  19:00 – 22:00   │ │
 │  │   with Figma"                  │ │                  │ │
-│  └────────────────────────────────┘ │  Harga Tiket:    │ │
-│                                     │  Rp 50.000       │ │
-│  ─ DESKRIPSI ─────────────────────  │                  │ │
-│  Full rich text description...      │  ●●●●●○ 8 kursi  │ │
-│                                     │  tersisa         │ │
-│  ─ DETAIL ─────────────────────────  │                  │ │
-│  📅 Sabtu, 26 April 2026            │  ┌────────────┐  │ │
-│  ⏰ 19:00 – 22:00 WIB               │  │ Beli Tiket │  │ │  ← amber
-│  📍 Campus Cafe, Bandung            │  └────────────┘  │ │
+│  └────────────────────────────────┘ │  Link resmi:     │ │
+│                                     │  event-foo.com…  │ │  ← truncated host
+│  ─ DESKRIPSI ─────────────────────  │  (read-only)     │ │
+│  Full rich text description...      │                  │ │
+│  ─ DETAIL ─────────────────────────  │  ┌────────────┐  │ │
+│  📅 Sabtu, 26 April 2026            │  │ Buka halaman│  │ │  ← amber, opens
+│  ⏰ 19:00 – 22:00 WIB               │  │ resmi event │  │ │     externalUrl
+│  📍 Campus Cafe, Bandung            │  └────────────┘  │ │     (new tab)
 │  👤 Host: @username                  │                  │ │
-│  🪑 Kapasitas: 30 orang             │  Butuh meja?     │ │
-│                                     │  [Reservasi juga]│ │ ← ghost link
+│                                     │  Butuh meja?     │ │
+│                                     │  [Reservasi meja]│ │ ← ghost → /reserve
 │                                     └──────────────────┘ │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -585,13 +581,10 @@ Desktop (right side sheet, 420px wide):    Mobile (bottom sheet, full-width):
 │  ──────────────  │
 │  Deskripsi...    │
 │  ──────────────  │
-│  🪑 8 kursi tersisa│
-│  ██████░░ (bar)  │
-│  ──────────────  │
 │  Detail          │
 ├──────────────────┤
 │  STICKY FOOTER   │
-│ Rp50.000 [Beli →]│  ← amber CTA, always visible
+│ [Buka halaman resmi event →]│  ← single primary CTA
 └──────────────────┘
 ```
 
@@ -599,45 +592,15 @@ Desktop (right side sheet, 420px wide):    Mobile (bottom sheet, full-width):
 
 - **Cover image:** `aspect-video`, `object-cover`, `rounded-xl` overflow hidden. Bottom: `linear-gradient(to top, rgba(16,15,8,1) 20%, transparent)`
 - **Category badge:** colored by type, `rounded-full`, top-left of image
-- **Seats remaining bar:** linear progress bar. Color transitions: green (>50%) → amber (<30%) → red (<10%)
-- **"Penuh" state:** registration button replaced with `"Event Penuh"` disabled button, red tint
 - **Sticky card (desktop):** `position: sticky`, `top: 80px`, `var(--card)` bg, amber border
-- **Sticky footer (mobile):** fixed bottom bar with price + CTA button
-- **Registration states:**
-  - Default: "Beli Tiket – Rp 50.000" amber button / "Daftar Gratis" for free events
-  - Already registered: "✓ Sudah Terdaftar" green button, disabled
-  - Not logged in: button click → redirect to `/sign-in?redirect=/events/:id`
-  - Loading: button shows spinner, disabled
-  - Full: "Event Penuh" gray button, disabled
+- **Sticky footer (mobile):** fixed bottom bar with **one** primary CTA — no price, no seat bar, no ticket states
+- **Primary CTA:** opens `externalUrl` in a **new tab** (`rel="noopener noreferrer"`). Label examples: "Buka halaman resmi event", "Daftar & info di penyelenggara". **No** login gate for viewing; auth not required to read this page.
+- **Secondary CTA:** ghost button → `/reserve` (optional query `?date=…` prefill as nicety only)
+- **Out of scope UI:** ticket price display, seats remaining, "Penuh", Mayar checkout, QR ticket, "Sudah terdaftar"
 
 ---
 
-## Page 9 — Event Registration Success (inline on Event Detail)
-
-After successful free registration (or Mayar.id webhook confirms paid), the sticky card transforms:
-
-```
-┌──────────────────┐
-│  ✅ Terdaftar!   │
-│                  │
-│  Tiket kamu:     │
-│  ┌────────────┐  │
-│  │ ████ QR ██ │  │  ← QR code showing ticketCode
-│  │ ██ CODE ██ │  │
-│  └────────────┘  │
-│  GH7K-M2PQ      │  ← monospace, amber
-│                  │
-│  [Reservasi Meja?]│  ← post-registration prompt
-└──────────────────┘
-```
-
-- QR code: generated client-side from `ticketCode` using a QR library
-- Ticket code displayed below QR in `JetBrains Mono`, large, amber
-- "Reservasi Meja?" prompt: `rounded-xl` amber-bordered card below the ticket, with message and link
-
----
-
-## Page 10 — QR Landing / In-Seat Menu (`/table/:tableId`)
+## Page 9 — QR Landing / In-Seat Menu (`/table/:tableId`)
 
 **Purpose:** The primary ordering experience. Customer scans physical QR code on the table, lands here. Must load instantly. No auth wall — menu visible immediately.
 
@@ -707,7 +670,7 @@ After successful free registration (or Mayar.id webhook confirms paid), the stic
 
 ---
 
-## Page 11 — Cart & Order Placement (Bottom Sheet)
+## Page 10 — Cart & Order Placement (Bottom Sheet)
 
 **Trigger:** Tapping the floating cart button.
 
@@ -742,7 +705,7 @@ After successful free registration (or Mayar.id webhook confirms paid), the stic
 
 ---
 
-## Page 12 — My Orders / Order Status (`/my-orders`)
+## Page 11 — My Orders / Order Status (`/my-orders`)
 
 **Purpose:** Customer tracks their active and past food orders.
 
@@ -791,7 +754,7 @@ Status updates in real time (Convex reactive). When status changes to "Siap": to
 
 ---
 
-## Page 13 — Profile (`/profile`)
+## Page 12 — Profile (`/profile`)
 
 ### Layout
 
@@ -838,7 +801,7 @@ Status updates in real time (Convex reactive). When status changes to "Siap": to
 
 ---
 
-## Page 14 — Staff: Live Reservation Operations Board (`/staff/reservations`)
+## Page 13 — Staff: Live Reservation Operations Board (`/staff/reservations`)
 
 **Purpose:** Staff's primary work screen. Shows all tables live, can release them. The "control center."
 
@@ -908,7 +871,7 @@ Alternative to floor plan: sortable table with columns: Meja, Customer, Tanggal,
 
 ---
 
-## Page 15 — Staff: Kitchen Order Queue (`/staff/orders`)
+## Page 14 — Staff: Kitchen Order Queue (`/staff/orders`)
 
 **Purpose:** Live kitchen display. Staff sees and manages all incoming food orders.
 
@@ -959,7 +922,7 @@ Alternative to floor plan: sortable table with columns: Meja, Customer, Tanggal,
 
 ---
 
-## Page 16 — Staff/Admin: Menu Management (`/admin/menu` or `/staff/menu`)
+## Page 15 — Staff/Admin: Menu Management (`/admin/menu` or `/staff/menu`)
 
 ### Layout (Desktop)
 
@@ -1003,7 +966,7 @@ Alternative to floor plan: sortable table with columns: Meja, Customer, Tanggal,
 
 ---
 
-## Page 17 — Admin: Analytics Dashboard (`/admin/dashboard`)
+## Page 16 — Admin: Analytics Dashboard (`/admin/dashboard`)
 
 **Purpose:** Owner's command center. Real-time business overview.
 
@@ -1029,8 +992,8 @@ Alternative to floor plan: sortable table with columns: Meja, Customer, Tanggal,
 │          │  └──────────────────────────────────┘           │
 │          │                                                  │
 │          │  ┌─────────────────┐ ┌─────────────────┐        │
-│          │  │ Event Attendees │ │ Pesanan Makanan │        │
-│          │  │ [Bar chart]     │ │ [Area chart]    │        │
+│          │  │ Pesanan (tren)  │ │ (opsional)      │        │
+│          │  │ [Area chart]    │ │ placeholder     │        │
 │          │  └─────────────────┘ └─────────────────┘        │
 └──────────┴────────────────────────────────────────────────┘
 ```
@@ -1040,14 +1003,13 @@ Alternative to floor plan: sortable table with columns: Meja, Customer, Tanggal,
 - **Stat cards:** `var(--card)`, amber icon (filled circle bg), large number in `Plus Jakarta Sans 700`, small comparison vs. yesterday below in green/red
 - **Charts:** shadcn/ui Chart (Recharts wrapper)
   - Reservations: single amber line chart, smooth curve
-  - Event Attendees: grouped bar chart (by event type — colored bars)
-  - Food Orders: area chart, teal fill
+  - Food Orders: area chart, teal fill (in-app events are listing-only — no attendee chart)
   - All charts: dark grid lines (`--border`), no box border, smooth hover tooltips
 - **All data:** reactive via Convex, refreshes without manual action
 
 ---
 
-## Page 18 — Admin: Table Layout Editor (`/admin/tables`)
+## Page 17 — Admin: Table Layout Editor (`/admin/tables`)
 
 ### Layout (Desktop)
 
@@ -1084,7 +1046,7 @@ Alternative to floor plan: sortable table with columns: Meja, Customer, Tanggal,
 
 ---
 
-## Page 19 — Admin: Event Management (`/admin/events`)
+## Page 18 — Admin: Event Management (`/admin/events`)
 
 ### Layout
 
@@ -1095,13 +1057,13 @@ Alternative to floor plan: sortable table with columns: Meja, Customer, Tanggal,
 │          │                                                  │
 │          │  ┌─────────────────────────────────────────┐   │
 │          │  │ [img] Workshop Design  │ PUBLISHED │ 26 Apr  │
-│          │  │       50 kap · 42 daftar · Rp 50k    [⋯] │  │
+│          │  │       event-foo.com…             [⋯] │  │
 │          │  ├─────────────────────────────────────────┤   │
 │          │  │ [img] Nobar Champions  │ DRAFT    │ 30 Apr  │
-│          │  │       30 kap · 0 daftar · Gratis     [⋯] │  │
+│          │  │       (belum ada link)           [⋯] │  │
 │          │  ├─────────────────────────────────────────┤   │
 │          │  │ [img] Meetup Startup   │ PUBLISHED │ 15 May  │
-│          │  │       20 kap · 18 daftar · Rp 25k    [⋯] │  │
+│          │  │       luma.com/…               [⋯] │  │
 │          │  └─────────────────────────────────────────┘   │
 └──────────┴────────────────────────────────────────────────┘
 ```
@@ -1128,12 +1090,8 @@ Alternative to floor plan: sortable table with columns: Meja, Customer, Tanggal,
 │ Mulai: [22 Apr] [19:00]       │
 │ Selesai: [22 Apr] [22:00]     │
 │                               │
-│ Deadline Registrasi           │
-│ [21 Apr 23:59]                │
-│                               │
-│ Kapasitas  [  30  ]           │
-│                               │
-│ Harga Tiket  [  0  ] = GRATIS │
+│ Link halaman resmi event *    │
+│ [https://________________]    │
 │                               │
 │ Deskripsi (rich text editor)  │
 │ ┌──────────────────────────┐ │
@@ -1147,40 +1105,11 @@ Alternative to floor plan: sortable table with columns: Meja, Customer, Tanggal,
 └──────────────────────────────┘
 ```
 
----
-
-## Page 20 — Admin: Event Attendees (`/admin/events/:id/attendees`)
-
-### Layout
-
-```
-┌──────────┬────────────────────────────────────────────────┐
-│ SIDEBAR  │ ← UI Design Workshop       [Export CSV] [Kirim Reminder] │
-│          │  42 / 50 terdaftar · Rp 50.000/tiket            │
-│          │  ─────────────────────────────────────────────  │
-│          │                                                  │
-│          │  [🔍 Cari nama atau email...]                    │
-│          │                                                  │
-│          │  ┌─────┬──────────────┬───────────┬───────────┐│
-│          │  │ No. │ Nama         │ Email     │ Status    ││
-│          │  ├─────┼──────────────┼───────────┼───────────┤│
-│          │  │  1  │ Ahmad Faris  │ ah@gm...  │ ✅ Konfirm││
-│          │  │  2  │ Budi Santoso │ bu@gm...  │ ✅ Konfirm││
-│          │  │  3  │ Citra Dewi   │ ci@gm...  │ ❌ Batal  ││
-│          │  └─────┴──────────────┴───────────┴───────────┘│
-└──────────┴────────────────────────────────────────────────┘
-```
-
-### Component Details
-
-- **Summary bar:** horizontal stat strip: capacity ring chart (small donut), revenue total
-- **Export CSV:** downloads file `attendees-workshop-design-22apr.csv`
-- **Send Reminder:** opens confirmation modal "Kirim pengingat ke 42 peserta?" with preview of the message template
-- **Table:** sortable, filterable. Status column: green chip (Konfirmasi) / gray chip (Dibatalkan)
+> **Admin note:** There is **no** in-app attendees list, CSV export, or reminder blast — registration happens on the external platform. Validate that **Link halaman resmi event** is a well-formed `https://` URL before publish.
 
 ---
 
-## Page 21 — Admin: Staff Management (`/admin/staff`)
+## Page 19 — Admin: Staff Management (`/admin/staff`)
 
 ### Layout
 
@@ -1263,7 +1192,7 @@ Examples:
 | --------------- | ----------------------------------------------------- | -------------------- | ------------------------- |
 | Homepage        | Bottom nav, stacked sections, horizontal event scroll | 2-col event grid     | 4-col event grid + navbar |
 | Floor Plan      | Horizontal-scroll SVG in overflow container           | Full SVG, no sidebar | Full SVG + legend sidebar |
-| Event Detail    | Sticky bottom CTA bar                                 | Sidebar card appears | Full sidebar card         |
+| Event Detail    | Sticky bottom: **external** official-page CTA          | Sidebar card + CTA   | Full sidebar + CTA        |
 | QR / Menu       | Full-screen menu, floating cart                       | 2-col menu grid      | 3-col menu grid (max-w)   |
 | Staff Orders    | Vertical stack of columns                             | 2 columns visible    | 3-column Kanban           |
 | Admin Dashboard | Stacked stat cards + charts                           | 2×2 grid             | 4-col stat row + 2 charts |
@@ -1276,7 +1205,7 @@ Examples:
 
 1. **TIX.ID Redesign Case Study** (UX inspiration): cinema seat selection → table floor plan metaphor, bottom tab nav, clear CTA hierarchy
 2. **Eveno — Event Booking App UI Kit** (Behance): dark event app aesthetic, 180+ screens
-3. **Restaurant Reservation App UI Kit** (Insightlancer/Behance): booking flow, e-ticket, my bookings tabs
+3. **Restaurant Reservation App UI Kit** (Insightlancer/Behance): booking flow, order / “my bookings” patterns (not in-app event tickets)
 4. **TOMATO Food Ordering App** (Medium Case Study): card-based menu, bottom navigation, order status stepper
 5. **Trena — Food Ordering Dark Mode App** (Envato): dark mode food app visual style
 6. **shadcn/ui theming docs**: CSS custom properties, OKLCH color system, sidebar theming
@@ -1285,4 +1214,4 @@ Examples:
 
 *Design spec owner: Development Team*
 *Generated for: AI UI Prototype Agent*
-*Last updated: April 16, 2026*
+*Last updated: April 17, 2026 — Events: listing/info-only with outbound official link; removed ticketing/registration/attendees UI from spec.*

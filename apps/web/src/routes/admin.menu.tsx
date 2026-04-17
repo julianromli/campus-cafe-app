@@ -1,10 +1,13 @@
-import PagePlaceholder from "@/components/page-placeholder";
+import MenuManagement from "@/components/menu/menu-management";
 
 export default function AdminMenuPage() {
   return (
-    <PagePlaceholder
-      title="Admin Menu"
-      description="Route admin menu management sudah siap. Sprint menu akan menambahkan kategori, item, dan availability toggles."
-    />
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Kelola menu</h1>
+        <p className="text-sm text-muted-foreground">Kategori, item, ketersediaan, dan gambar.</p>
+      </div>
+      <MenuManagement mode="admin" />
+    </div>
   );
 }

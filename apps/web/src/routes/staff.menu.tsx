@@ -1,10 +1,13 @@
-import PagePlaceholder from "@/components/page-placeholder";
+import MenuManagement from "@/components/menu/menu-management";
 
 export default function StaffMenuPage() {
   return (
-    <PagePlaceholder
-      title="Staff Menu"
-      description="Route staff untuk menu management sudah siap. CRUD kategori dan item akan masuk pada sprint menu."
-    />
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Menu</h1>
+        <p className="text-sm text-muted-foreground">Ubah item dan status ketersediaan. Kategori hanya admin.</p>
+      </div>
+      <MenuManagement mode="staff" />
+    </div>
   );
 }

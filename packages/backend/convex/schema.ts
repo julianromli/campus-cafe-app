@@ -57,6 +57,7 @@ const notificationMetadata = v.object({
 export default defineSchema({
   users: defineTable({
     authId: v.optional(v.string()),
+    avatarStorageId: v.optional(v.id("_storage")),
     avatarUrl: v.optional(v.string()),
     createdAt: v.number(),
     email: v.string(),
@@ -136,7 +137,7 @@ export default defineSchema({
     categoryId: v.id("menuCategories"),
     createdAt: v.number(),
     description: v.optional(v.string()),
-    imageUrl: v.optional(v.string()),
+    imageStorageId: v.optional(v.id("_storage")),
     name: v.string(),
     price: v.number(),
   })
