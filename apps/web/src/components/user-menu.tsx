@@ -1,5 +1,6 @@
 import { api } from "@campus-cafe/backend/convex/_generated/api";
 import { Button } from "@campus-cafe/ui/components/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@campus-cafe/ui/components/avatar";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -21,16 +22,38 @@ export default function UserMenu() {
 		return null;
 	}
 
+	// Function to get initials from name (e.g., "John Doe" -> "JD")
+	const getInitials = (name?: string) => {
+		if (!name) return "U";
+		return name
+			.split(" ")
+			.map((n) => n[0])
+			.join("")
+			.substring(0, 2)
+			.toUpperCase();
+	};
+
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger render={<Button variant="outline" />}>
-				{user?.name}
+			<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="rounded-full" />}>
+				<Avatar className="size-9">
+					<AvatarImage src={user?.image || ""} alt={user?.name || "User avatar"} />
+					<AvatarFallback className="bg-primary/10 text-primary font-medium">
+						{getInitials(user?.name)}
+					</AvatarFallback>
+				</Avatar>
 			</DropdownMenuTrigger>
-			<DropdownMenuContent className="bg-card">
+			<DropdownMenuContent className="bg-card" align="end">
 				<DropdownMenuGroup>
-					<DropdownMenuLabel>My Account</DropdownMenuLabel>
+					<DropdownMenuLabel className="font-normal">
+						<div className="flex flex-col space-y-1">
+							<p className="text-sm font-medium leading-none">{user?.name}</p>
+							<p className="text-xs leading-none text-muted-foreground">
+								{user?.email}
+							</p>
+						</div>
+					</DropdownMenuLabel>
 					<DropdownMenuSeparator />
-					<DropdownMenuItem>{user?.email}</DropdownMenuItem>
 					{user.role === "customer" ? (
 						<>
 							<DropdownMenuItem onClick={() => navigate("/my-reservations")}>
@@ -54,6 +77,7 @@ export default function UserMenu() {
 							Admin Panel
 						</DropdownMenuItem>
 					) : null}
+					<DropdownMenuSeparator />
 					<DropdownMenuItem
 						variant="destructive"
 						onClick={() => {

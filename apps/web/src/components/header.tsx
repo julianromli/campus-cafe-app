@@ -1,117 +1,131 @@
 import { Button } from "@campus-cafe/ui/components/button";
-import {
-	Sheet,
-	SheetContent,
-	SheetHeader,
-	SheetTitle,
-} from "@campus-cafe/ui/components/sheet";
 import { Authenticated, Unauthenticated } from "convex/react";
-import { MenuIcon } from "lucide-react";
-import { useState } from "react";
+import { Coffee, Home, User, CalendarDays } from "lucide-react";
 import { NavLink } from "react-router";
 
 import { ModeToggle } from "./mode-toggle";
 import UserMenu from "./user-menu";
+import { cn } from "@campus-cafe/ui/lib/utils";
 
 export default function Header() {
 	const links = [
-		{ to: "/", label: "Home" },
-		{ to: "/events", label: "Events" },
-		{ to: "/reserve", label: "Reserve" },
+		{ to: "/", label: "Home", icon: Home },
+		{ to: "/events", label: "Events", icon: CalendarDays },
+		{ to: "/reserve", label: "Reserve", icon: Coffee },
 	] as const;
 
-	const [mobileOpen, setMobileOpen] = useState(false);
-
 	return (
-		<header className="border-border border-b bg-background/95 backdrop-blur">
-			<div className="mx-auto flex w-full max-w-6xl flex-row items-center justify-between gap-4 px-4 py-3">
-				<div className="flex min-w-0 items-center gap-2 md:gap-4">
-					<Button
-						aria-label="Open menu"
-						className="min-h-11 min-w-11 md:hidden"
-						onClick={() => setMobileOpen(true)}
-						size="icon"
-						variant="outline"
-					>
-						<MenuIcon />
-					</Button>
-					<nav className="hidden min-w-0 items-center gap-4 text-sm md:flex">
+		<>
+			{/* Top Header (Desktop & Mobile) */}
+			<header className="sticky top-0 z-50 border-b border-border bg-background/80 backdrop-blur-lg">
+				<div className="mx-auto flex w-full max-w-6xl flex-row items-center justify-between gap-4 px-4 py-3">
+					<div className="flex min-w-0 items-center gap-2 md:gap-4">
 						<NavLink
 							to="/"
-							className="font-semibold text-base tracking-tight"
+							className="flex items-center gap-2 font-heading text-lg font-semibold tracking-tight"
 							end
 						>
-							Campus Cafe
+							<div className="flex size-8 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+								<Coffee className="size-4" />
+							</div>
+							<span className="hidden sm:inline-block">Campus Cafe</span>
 						</NavLink>
-						{links.map(({ to, label }) => {
-							return (
-								<NavLink
-									key={to}
-									to={to}
-									className={({ isActive }) =>
-										isActive
-											? "font-semibold text-foreground"
-											: "text-muted-foreground"
-									}
-									end
-								>
-									{label}
-								</NavLink>
-							);
-						})}
-					</nav>
-					<NavLink
-						className="truncate font-semibold text-base tracking-tight md:hidden"
-						end
-						onClick={() => setMobileOpen(false)}
-						to="/"
-					>
-						Campus Cafe
-					</NavLink>
+						<nav className="hidden min-w-0 items-center gap-6 pl-6 text-sm font-medium md:flex">
+							{links.map(({ to, label }) => {
+								return (
+									<NavLink
+										key={to}
+										to={to}
+										className={({ isActive }) =>
+											cn(
+												"transition-colors hover:text-foreground/80",
+												isActive ? "text-foreground" : "text-foreground/60"
+											)
+										}
+										end
+									>
+										{label}
+									</NavLink>
+								);
+							})}
+						</nav>
+					</div>
+					<div className="flex shrink-0 items-center gap-3">
+						<ModeToggle />
+						<div className="h-6 w-px bg-border hidden sm:block" />
+						<Unauthenticated>
+							<Button
+								variant="default"
+								className="rounded-full px-6"
+								render={<NavLink to="/sign-in" />}
+							>
+								Sign In
+							</Button>
+						</Unauthenticated>
+						<Authenticated>
+							<UserMenu />
+						</Authenticated>
+					</div>
 				</div>
-				<div className="flex shrink-0 items-center gap-2">
-					<Unauthenticated>
-						<Button
-							className="min-h-11"
-							variant="outline"
-							render={<NavLink to="/sign-in" />}
+			</header>
+
+			{/* Mobile Bottom Navigation Bar */}
+			<div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/80 pb-safe pt-2 backdrop-blur-lg md:hidden">
+				<nav className="mx-auto flex h-14 max-w-md items-center justify-around px-6">
+					{links.map(({ to, label, icon: Icon }) => (
+						<NavLink
+							key={to}
+							to={to}
+							end
+							className={({ isActive }) =>
+								cn(
+									"flex flex-col items-center justify-center gap-1 rounded-xl px-4 py-1 transition-colors",
+									isActive
+										? "text-primary"
+										: "text-muted-foreground hover:text-foreground"
+								)
+							}
 						>
-							Sign In
-						</Button>
+							<Icon className="size-5" />
+							<span className="text-[10px] font-medium">{label}</span>
+						</NavLink>
+					))}
+
+					{/* Profile Link for Mobile */}
+					<Unauthenticated>
+						<NavLink
+							to="/sign-in"
+							className={({ isActive }) =>
+								cn(
+									"flex flex-col items-center justify-center gap-1 rounded-xl px-4 py-1 transition-colors",
+									isActive
+										? "text-primary"
+										: "text-muted-foreground hover:text-foreground"
+								)
+							}
+						>
+							<User className="size-5" />
+							<span className="text-[10px] font-medium">Profile</span>
+						</NavLink>
 					</Unauthenticated>
 					<Authenticated>
-						<UserMenu />
+						<NavLink
+							to="/profile"
+							className={({ isActive }) =>
+								cn(
+									"flex flex-col items-center justify-center gap-1 rounded-xl px-4 py-1 transition-colors",
+									isActive
+										? "text-primary"
+										: "text-muted-foreground hover:text-foreground"
+								)
+							}
+						>
+							<User className="size-5" />
+							<span className="text-[10px] font-medium">Profile</span>
+						</NavLink>
 					</Authenticated>
-					<ModeToggle />
-				</div>
+				</nav>
 			</div>
-
-			<Sheet onOpenChange={setMobileOpen} open={mobileOpen}>
-				<SheetContent className="w-[min(100vw,320px)]" side="right">
-					<SheetHeader>
-						<SheetTitle>Menu</SheetTitle>
-					</SheetHeader>
-					<nav className="flex flex-col gap-1 p-2">
-						{links.map(({ to, label }) => (
-							<NavLink
-								key={to}
-								to={to}
-								className={({ isActive }) =>
-									`min-h-11 rounded-md px-3 py-2.5 text-sm ${
-										isActive
-											? "bg-primary/10 font-medium text-foreground"
-											: "text-muted-foreground"
-									}`
-								}
-								end
-								onClick={() => setMobileOpen(false)}
-							>
-								{label}
-							</NavLink>
-						))}
-					</nav>
-				</SheetContent>
-			</Sheet>
-		</header>
+		</>
 	);
 }
