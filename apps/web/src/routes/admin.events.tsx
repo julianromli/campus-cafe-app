@@ -220,11 +220,11 @@ export default function AdminEventsPage() {
 								resetCreate();
 							}}
 						>
-							<PlusIcon className="size-4" />
+							<PlusIcon data-icon="inline-start" />
 							Baru
 						</Button>
 					</CardHeader>
-					<CardContent className="space-y-2">
+					<CardContent className="flex flex-col gap-2">
 						{events.length === 0 ? (
 							<p className="text-muted-foreground text-sm">Belum ada event.</p>
 						) : (
@@ -261,15 +261,16 @@ export default function AdminEventsPage() {
 												{doc.status === "published" ? "Unpublish" : "Publish"}
 											</Button>
 											<Button
-												size="sm"
+												size="icon-sm"
 												variant="destructive"
 												type="button"
 												disabled={submitting}
+												aria-label="Hapus event"
 												onClick={() => {
 													void handleDelete(doc._id);
 												}}
 											>
-												<TrashIcon className="size-4" />
+												<TrashIcon />
 											</Button>
 										</div>
 									</li>
@@ -291,8 +292,11 @@ export default function AdminEventsPage() {
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<form className="space-y-4" onSubmit={(e) => void handleSubmit(e)}>
-							<div className="space-y-2">
+						<form
+							className="flex flex-col gap-4"
+							onSubmit={(e) => void handleSubmit(e)}
+						>
+							<div className="flex flex-col gap-2">
 								<Label htmlFor="title">Judul</Label>
 								<Input
 									id="title"
@@ -303,7 +307,7 @@ export default function AdminEventsPage() {
 									required
 								/>
 							</div>
-							<div className="space-y-2">
+							<div className="flex flex-col gap-2">
 								<Label htmlFor="category">Kategori</Label>
 								<Input
 									id="category"
@@ -314,7 +318,7 @@ export default function AdminEventsPage() {
 									required
 								/>
 							</div>
-							<div className="space-y-2">
+							<div className="flex flex-col gap-2">
 								<Label htmlFor="description">Deskripsi</Label>
 								<textarea
 									id="description"
@@ -327,7 +331,7 @@ export default function AdminEventsPage() {
 								/>
 							</div>
 							<div className="grid gap-4 sm:grid-cols-2">
-								<div className="space-y-2">
+								<div className="flex flex-col gap-2">
 									<Label htmlFor="start">Mulai</Label>
 									<Input
 										id="start"
@@ -339,7 +343,7 @@ export default function AdminEventsPage() {
 										required
 									/>
 								</div>
-								<div className="space-y-2">
+								<div className="flex flex-col gap-2">
 									<Label htmlFor="end">Selesai</Label>
 									<Input
 										id="end"
@@ -352,7 +356,7 @@ export default function AdminEventsPage() {
 									/>
 								</div>
 							</div>
-							<div className="space-y-2">
+							<div className="flex flex-col gap-2">
 								<Label htmlFor="externalUrl">Link halaman resmi (https)</Label>
 								<Input
 									id="externalUrl"
@@ -364,7 +368,7 @@ export default function AdminEventsPage() {
 									}}
 								/>
 							</div>
-							<div className="space-y-2">
+							<div className="flex flex-col gap-2">
 								<Label htmlFor="coverImage">Cover image URL (opsional)</Label>
 								<Input
 									id="coverImage"
@@ -375,7 +379,7 @@ export default function AdminEventsPage() {
 									}}
 								/>
 							</div>
-							<div className="space-y-2">
+							<div className="flex flex-col gap-2">
 								<Label htmlFor="organizerName">Penyelenggara (opsional)</Label>
 								<Input
 									id="organizerName"
@@ -385,7 +389,7 @@ export default function AdminEventsPage() {
 									}}
 								/>
 							</div>
-							<div className="space-y-2">
+							<div className="flex flex-col gap-2">
 								<Label htmlFor="locationText">Lokasi teks (opsional)</Label>
 								<Input
 									id="locationText"
@@ -395,7 +399,7 @@ export default function AdminEventsPage() {
 									}}
 								/>
 							</div>
-							<div className="space-y-2">
+							<div className="flex flex-col gap-2">
 								<Label htmlFor="status">Status</Label>
 								<select
 									id="status"

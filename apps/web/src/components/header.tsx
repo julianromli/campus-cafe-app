@@ -33,7 +33,7 @@ export default function Header() {
 						size="icon"
 						variant="outline"
 					>
-						<MenuIcon className="size-5" />
+						<MenuIcon />
 					</Button>
 					<nav className="hidden min-w-0 items-center gap-4 text-sm md:flex">
 						<NavLink

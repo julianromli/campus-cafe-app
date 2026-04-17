@@ -1,3 +1,4 @@
+import { Badge } from "@campus-cafe/ui/components/badge";
 import { Card } from "@campus-cafe/ui/components/card";
 import { Link } from "react-router";
 
@@ -58,14 +59,14 @@ export default function EventCard({ event }: { event: EventCardModel }) {
 								{event.category}
 							</span>
 							{event.isOngoing ? (
-								<span className="rounded-full bg-amber-500/90 px-2 py-0.5 font-medium text-[10px] text-amber-950">
+								<Badge variant="secondary" className="text-[10px]">
 									Berlangsung
-								</span>
+								</Badge>
 							) : null}
 						</div>
 					</div>
 				</div>
-				<div className="space-y-1 p-4">
+				<div className="flex flex-col gap-1 p-4">
 					<p className="line-clamp-2 font-semibold leading-snug">
 						{event.title}
 					</p>

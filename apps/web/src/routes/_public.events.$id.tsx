@@ -1,9 +1,11 @@
 import { api } from "@campus-cafe/backend/convex/_generated/api";
 import type { Id } from "@campus-cafe/backend/convex/_generated/dataModel";
+import { Badge } from "@campus-cafe/ui/components/badge";
 import { Button } from "@campus-cafe/ui/components/button";
 import {
 	Card,
 	CardContent,
+	CardDescription,
 	CardHeader,
 	CardTitle,
 } from "@campus-cafe/ui/components/card";
@@ -40,7 +42,7 @@ export default function EventDetailPage() {
 
 	if (event === null) {
 		return (
-			<div className="space-y-4">
+			<div className="flex flex-col gap-4">
 				<p className="text-muted-foreground text-sm">
 					Event tidak ditemukan atau belum dipublikasikan.
 				</p>
@@ -64,9 +66,9 @@ export default function EventDetailPage() {
 
 	return (
 		<div className="mx-auto grid max-w-4xl gap-8 lg:grid-cols-[1fr_320px]">
-			<article className="space-y-6">
+			<article className="flex flex-col gap-6">
 				<div
-					className="aspect-video overflow-hidden rounded-xl border border-border bg-center bg-cover bg-muted"
+					className="aspect-video overflow-hidden rounded-4xl border border-border bg-center bg-cover bg-muted"
 					style={
 						event.coverImage
 							? { backgroundImage: `url(${event.coverImage})` }
@@ -74,10 +76,8 @@ export default function EventDetailPage() {
 					}
 				>
 					<div className="flex h-full flex-col justify-end bg-gradient-to-t from-background via-background/80 to-transparent p-6">
-						<span className="mb-2 inline-flex w-fit rounded-full bg-primary/90 px-2 py-0.5 font-medium text-primary-foreground text-xs">
-							{event.category}
-						</span>
-						<h1 className="font-semibold text-3xl tracking-tight">
+						<Badge className="mb-2 w-fit">{event.category}</Badge>
+						<h1 className="font-heading font-semibold text-3xl tracking-tight">
 							{event.title}
 						</h1>
 					</div>
@@ -87,7 +87,7 @@ export default function EventDetailPage() {
 					<p className="whitespace-pre-wrap">{event.description}</p>
 				</div>
 
-				<section className="space-y-2 text-sm">
+				<section className="flex flex-col gap-2 text-sm">
 					<p>
 						<span className="text-muted-foreground">Jadwal: </span>
 						{formatRange(event.startTime, event.endTime)}
@@ -114,18 +114,15 @@ export default function EventDetailPage() {
 							Lanjutkan di situs resmi
 						</CardTitle>
 						{host ? (
-							<p
-								className="truncate text-muted-foreground text-xs"
-								title={externalUrl}
-							>
+							<CardDescription className="truncate" title={externalUrl}>
 								{host}
-							</p>
+							</CardDescription>
 						) : null}
 					</CardHeader>
 					<CardContent className="flex flex-col gap-3">
 						{externalUrl && /^https:\/\//i.test(externalUrl) ? (
 							<Button
-								className="w-full gap-2"
+								className="w-full"
 								render={
 									<a
 										href={externalUrl}
@@ -134,7 +131,7 @@ export default function EventDetailPage() {
 									/>
 								}
 							>
-								<ExternalLinkIcon className="size-4" aria-hidden />
+								<ExternalLinkIcon data-icon="inline-start" aria-hidden />
 								Buka halaman resmi event
 							</Button>
 						) : (

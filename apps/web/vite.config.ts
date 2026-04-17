@@ -7,6 +7,17 @@ import tsconfigPaths from "vite-tsconfig-paths";
 const themeColor = "#0f172a";
 
 export default defineConfig({
+	optimizeDeps: {
+		include: ["@hugeicons/react", "@hugeicons/core-free-icons"],
+	},
+	ssr: {
+		// Workspace UI imports Hugeicons; inline so the SSR/dev runner resolves these deps.
+		noExternal: [
+			"@campus-cafe/ui",
+			"@hugeicons/react",
+			"@hugeicons/core-free-icons",
+		],
+	},
 	plugins: [
 		tailwindcss(),
 		reactRouter(),

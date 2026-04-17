@@ -12,7 +12,7 @@ export default function PagePlaceholder({
 			<p className="text-muted-foreground text-sm uppercase tracking-[0.2em]">
 				Sprint 1 Skeleton
 			</p>
-			<div className="space-y-2">
+			<div className="flex flex-col gap-2">
 				<h1 className="font-semibold text-3xl">{title}</h1>
 				<p className="text-muted-foreground text-sm leading-6">{description}</p>
 			</div>

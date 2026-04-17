@@ -24,8 +24,8 @@ export default function StatCard({
 }: StatCardProps) {
 	return (
 		<Card size="sm">
-			<CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
-				<div className="space-y-1">
+			<CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
+				<div className="flex flex-col gap-1">
 					<CardDescription>{label}</CardDescription>
 					<CardTitle className="font-semibold text-2xl tabular-nums">
 						{value}

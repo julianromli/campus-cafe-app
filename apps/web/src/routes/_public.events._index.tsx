@@ -1,5 +1,11 @@
 import { api } from "@campus-cafe/backend/convex/_generated/api";
 import { Button } from "@campus-cafe/ui/components/button";
+import {
+	Empty,
+	EmptyDescription,
+	EmptyHeader,
+	EmptyTitle,
+} from "@campus-cafe/ui/components/empty";
 import { useQuery } from "convex/react";
 import { useMemo } from "react";
 import { Link } from "react-router";
@@ -15,7 +21,7 @@ export default function EventsListPage() {
 
 	if (events === undefined) {
 		return (
-			<div className="space-y-4">
+			<div className="flex flex-col gap-4">
 				<p className="text-muted-foreground text-sm">Memuat event…</p>
 				<EventListSkeleton count={6} />
 			</div>
@@ -24,24 +30,24 @@ export default function EventsListPage() {
 
 	if (events.length === 0) {
 		return (
-			<div className="mx-auto max-w-lg space-y-4 text-center">
-				<h1 className="font-semibold text-2xl tracking-tight">
-					Event mendatang
-				</h1>
-				<p className="text-muted-foreground text-sm">
-					Belum ada event yang dipublikasikan. Cek lagi nanti atau reservasi
-					meja untuk kunjunganmu.
-				</p>
+			<Empty className="mx-auto min-h-[40vh] max-w-lg border border-dashed">
+				<EmptyHeader>
+					<EmptyTitle>Event mendatang</EmptyTitle>
+					<EmptyDescription>
+						Belum ada event yang dipublikasikan. Cek lagi nanti atau reservasi
+						meja untuk kunjunganmu.
+					</EmptyDescription>
+				</EmptyHeader>
 				<Button render={<Link to="/reserve" />}>Reservasi meja</Button>
-			</div>
+			</Empty>
 		);
 	}
 
 	return (
-		<div className="space-y-8">
+		<div className="flex flex-col gap-8">
 			<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<h1 className="font-semibold text-2xl tracking-tight">
+					<h1 className="font-heading font-semibold text-2xl tracking-tight">
 						Event mendatang
 					</h1>
 					<p className="text-muted-foreground text-sm">

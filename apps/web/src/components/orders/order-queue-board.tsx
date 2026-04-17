@@ -17,8 +17,8 @@ export default function OrderQueueBoard() {
 
 	return (
 		<div className="flex flex-col gap-6 lg:grid lg:grid-cols-3 lg:gap-4">
-			<section className="flex flex-col gap-3 rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 lg:sticky lg:top-2 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
-				<header className="sticky top-0 z-10 bg-amber-500/5 py-1 font-semibold text-amber-600 text-sm backdrop-blur-sm dark:text-amber-400">
+			<section className="flex flex-col gap-3 rounded-lg border border-chart-1/40 bg-chart-1/10 p-3 lg:sticky lg:top-2 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+				<header className="sticky top-0 z-10 bg-chart-1/10 py-1 font-semibold text-chart-1 text-sm backdrop-blur-sm">
 					Diterima ({pending.length})
 				</header>
 				<div className="flex flex-col gap-3">
@@ -29,8 +29,8 @@ export default function OrderQueueBoard() {
 					)}
 				</div>
 			</section>
-			<section className="flex flex-col gap-3 rounded-lg border border-sky-500/40 bg-sky-500/5 p-3 lg:sticky lg:top-2 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
-				<header className="sticky top-0 z-10 bg-sky-500/5 py-1 font-semibold text-sky-600 text-sm backdrop-blur-sm dark:text-sky-400">
+			<section className="flex flex-col gap-3 rounded-lg border border-chart-2/40 bg-chart-2/10 p-3 lg:sticky lg:top-2 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+				<header className="sticky top-0 z-10 bg-chart-2/10 py-1 font-semibold text-chart-2 text-sm backdrop-blur-sm">
 					Diproses ({preparing.length})
 				</header>
 				<div className="flex flex-col gap-3">
@@ -43,8 +43,8 @@ export default function OrderQueueBoard() {
 					)}
 				</div>
 			</section>
-			<section className="flex flex-col gap-3 rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3 lg:sticky lg:top-2 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
-				<header className="sticky top-0 z-10 bg-emerald-500/5 py-1 font-semibold text-emerald-600 text-sm backdrop-blur-sm dark:text-emerald-400">
+			<section className="flex flex-col gap-3 rounded-lg border border-chart-3/40 bg-chart-3/10 p-3 lg:sticky lg:top-2 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto">
+				<header className="sticky top-0 z-10 bg-chart-3/10 py-1 font-semibold text-chart-3 text-sm backdrop-blur-sm">
 					Siap ({ready.length})
 				</header>
 				<div className="flex flex-col gap-3">

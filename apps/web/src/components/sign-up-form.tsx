@@ -1,6 +1,20 @@
 import { Button } from "@campus-cafe/ui/components/button";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "@campus-cafe/ui/components/card";
+import {
+	Field,
+	FieldContent,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+} from "@campus-cafe/ui/components/field";
 import { Input } from "@campus-cafe/ui/components/input";
-import { Label } from "@campus-cafe/ui/components/label";
 import { useForm } from "@tanstack/react-form";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import { toast } from "sonner";
@@ -65,149 +79,148 @@ export default function SignUpForm({ onSwitchToSignIn }: SignUpFormProps) {
 	});
 
 	return (
-		<div className="mx-auto mt-10 w-full max-w-md p-6">
-			<div className="mb-6 space-y-2 text-center">
-				<h1 className="font-bold text-3xl">Create Account</h1>
-				<p className="text-muted-foreground text-sm">
-					Create your customer account to unlock reservations and in-seat
-					ordering.
-				</p>
-			</div>
+		<div className="mx-auto mt-10 w-full max-w-md px-4">
+			<Card>
+				<CardHeader className="text-center">
+					<CardTitle className="font-heading text-2xl">
+						Create account
+					</CardTitle>
+					<CardDescription>
+						Create your customer account to unlock reservations and in-seat
+						ordering.
+					</CardDescription>
+				</CardHeader>
+				<CardContent className="flex flex-col gap-6">
+					{googleAuthEnabled ? (
+						<div className="flex flex-col gap-3">
+							<Button
+								type="button"
+								variant="outline"
+								className="w-full"
+								onClick={handleGoogleSignIn}
+							>
+								Continue with Google
+							</Button>
+							<p className="text-center text-muted-foreground text-xs uppercase tracking-[0.2em]">
+								or
+							</p>
+						</div>
+					) : null}
 
-			{googleAuthEnabled ? (
-				<div className="mb-4 space-y-3">
-					<Button
-						type="button"
-						variant="outline"
-						className="w-full"
-						onClick={handleGoogleSignIn}
+					<form
+						onSubmit={(e) => {
+							e.preventDefault();
+							e.stopPropagation();
+							form.handleSubmit();
+						}}
+						className="contents"
 					>
-						Continue with Google
-					</Button>
-					<div className="text-center text-muted-foreground text-xs uppercase tracking-[0.2em]">
-						or
-					</div>
-				</div>
-			) : null}
+						<FieldGroup className="gap-4">
+							<form.Field name="name">
+								{(field) => {
+									const invalid = field.state.meta.errors.length > 0;
+									return (
+										<Field data-invalid={invalid || undefined}>
+											<FieldLabel htmlFor={field.name}>Name</FieldLabel>
+											<FieldContent>
+												<Input
+													id={field.name}
+													name={field.name}
+													value={field.state.value}
+													aria-invalid={invalid}
+													onBlur={field.handleBlur}
+													onChange={(e) =>
+														field.handleChange(e.target.value)
+													}
+												/>
+												<FieldError errors={field.state.meta.errors} />
+											</FieldContent>
+										</Field>
+									);
+								}}
+							</form.Field>
 
-			<form
-				onSubmit={(e) => {
-					e.preventDefault();
-					e.stopPropagation();
-					form.handleSubmit();
-				}}
-				className="space-y-4"
-			>
-				<div>
-					<form.Field name="name">
-						{(field) => (
-							<div className="space-y-2">
-								<Label htmlFor={field.name}>Name</Label>
-								<Input
-									id={field.name}
-									name={field.name}
-									value={field.state.value}
-									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-								/>
-								{field.state.meta.errors.map((error, index) => (
-									<p
-										key={`${field.name}-error-${index}`}
-										className="text-red-500"
-									>
-										{error?.message}
-									</p>
-								))}
-							</div>
-						)}
-					</form.Field>
-				</div>
+							<form.Field name="email">
+								{(field) => {
+									const invalid = field.state.meta.errors.length > 0;
+									return (
+										<Field data-invalid={invalid || undefined}>
+											<FieldLabel htmlFor={field.name}>Email</FieldLabel>
+											<FieldContent>
+												<Input
+													id={field.name}
+													name={field.name}
+													type="email"
+													value={field.state.value}
+													aria-invalid={invalid}
+													onBlur={field.handleBlur}
+													onChange={(e) =>
+														field.handleChange(e.target.value)
+													}
+												/>
+												<FieldError errors={field.state.meta.errors} />
+											</FieldContent>
+										</Field>
+									);
+								}}
+							</form.Field>
 
-				<div>
-					<form.Field name="email">
-						{(field) => (
-							<div className="space-y-2">
-								<Label htmlFor={field.name}>Email</Label>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="email"
-									value={field.state.value}
-									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-								/>
-								{field.state.meta.errors.map((error, index) => (
-									<p
-										key={`${field.name}-error-${index}`}
-										className="text-red-500"
-									>
-										{error?.message}
-									</p>
-								))}
-							</div>
-						)}
-					</form.Field>
-				</div>
+							<form.Field name="password">
+								{(field) => {
+									const invalid = field.state.meta.errors.length > 0;
+									return (
+										<Field data-invalid={invalid || undefined}>
+											<FieldLabel htmlFor={field.name}>Password</FieldLabel>
+											<FieldContent>
+												<Input
+													id={field.name}
+													name={field.name}
+													type="password"
+													value={field.state.value}
+													aria-invalid={invalid}
+													onBlur={field.handleBlur}
+													onChange={(e) =>
+														field.handleChange(e.target.value)
+													}
+												/>
+												<FieldError errors={field.state.meta.errors} />
+											</FieldContent>
+										</Field>
+									);
+								}}
+							</form.Field>
+						</FieldGroup>
 
-				<div>
-					<form.Field name="password">
-						{(field) => (
-							<div className="space-y-2">
-								<Label htmlFor={field.name}>Password</Label>
-								<Input
-									id={field.name}
-									name={field.name}
-									type="password"
-									value={field.state.value}
-									onBlur={field.handleBlur}
-									onChange={(e) => field.handleChange(e.target.value)}
-								/>
-								{field.state.meta.errors.map((error, index) => (
-									<p
-										key={`${field.name}-error-${index}`}
-										className="text-red-500"
-									>
-										{error?.message}
-									</p>
-								))}
-							</div>
-						)}
-					</form.Field>
-				</div>
-
-				<form.Subscribe
-					selector={(state) => ({
-						canSubmit: state.canSubmit,
-						isSubmitting: state.isSubmitting,
-					})}
-				>
-					{({ canSubmit, isSubmitting }) => (
-						<Button
-							type="submit"
-							className="w-full"
-							disabled={!canSubmit || isSubmitting}
+						<form.Subscribe
+							selector={(state) => ({
+								canSubmit: state.canSubmit,
+								isSubmitting: state.isSubmitting,
+							})}
 						>
-							{isSubmitting ? "Submitting..." : "Sign Up"}
+							{({ canSubmit, isSubmitting }) => (
+								<Button
+									type="submit"
+									className="w-full"
+									disabled={!canSubmit || isSubmitting}
+								>
+									{isSubmitting ? "Submitting…" : "Sign up"}
+								</Button>
+							)}
+						</form.Subscribe>
+					</form>
+				</CardContent>
+				<CardFooter className="flex justify-center border-t pt-6">
+					{onSwitchToSignIn ? (
+						<Button variant="link" onClick={onSwitchToSignIn}>
+							Already have an account? Sign in
+						</Button>
+					) : (
+						<Button variant="link" render={<Link to="/sign-in" />}>
+							Already have an account? Sign in
 						</Button>
 					)}
-				</form.Subscribe>
-			</form>
-
-			<div className="mt-4 text-center">
-				{onSwitchToSignIn ? (
-					<Button
-						variant="link"
-						onClick={onSwitchToSignIn}
-						className="text-indigo-600 hover:text-indigo-800"
-					>
-						Already have an account? Sign In
-					</Button>
-				) : (
-					<Button variant="link" render={<Link to="/sign-in" />}>
-						Already have an account? Sign In
-					</Button>
-				)}
-			</div>
+				</CardFooter>
+			</Card>
 		</div>
 	);
 }

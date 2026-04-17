@@ -1,4 +1,5 @@
 import { api } from "@campus-cafe/backend/convex/_generated/api";
+import { Badge } from "@campus-cafe/ui/components/badge";
 import {
 	Card,
 	CardContent,
@@ -112,9 +113,9 @@ export default function MyOrdersPage() {
 									<CardTitle className="font-mono text-sm">
 										#{order._id.slice(-6).toUpperCase()}
 									</CardTitle>
-									<span className="text-emerald-600 text-xs dark:text-emerald-400">
+									<Badge variant="secondary" className="text-[10px]">
 										Selesai
-									</span>
+									</Badge>
 								</div>
 								<CardDescription>{order.table.label}</CardDescription>
 							</CardHeader>

@@ -61,7 +61,7 @@ export default function OrderStatus({ className, status }: OrderStatusProps) {
 									className={cn(
 										"mx-1 flex size-7 shrink-0 items-center justify-center rounded-full border-2 font-semibold text-[10px]",
 										done &&
-											"border-emerald-500 bg-emerald-500/20 text-emerald-400",
+											"border-primary bg-primary/20 text-primary",
 										current &&
 											!done &&
 											"animate-pulse border-primary bg-primary/25 text-primary",

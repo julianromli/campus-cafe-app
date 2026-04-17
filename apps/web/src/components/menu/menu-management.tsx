@@ -133,7 +133,7 @@ export default function MenuManagement({ mode }: MenuManagementProps) {
 	return (
 		<div className="grid gap-6 lg:grid-cols-[280px_1fr]">
 			<Card>
-				<CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0">
+				<CardHeader className="flex flex-row items-start justify-between gap-2">
 					<div>
 						<CardTitle>Kategori</CardTitle>
 						<CardDescription>
@@ -210,7 +210,7 @@ export default function MenuManagement({ mode }: MenuManagementProps) {
 			</Card>
 
 			<Card>
-				<CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+				<CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3">
 					<div>
 						<CardTitle>Item menu</CardTitle>
 						<CardDescription>

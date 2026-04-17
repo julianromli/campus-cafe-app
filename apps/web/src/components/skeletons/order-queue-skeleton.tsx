@@ -24,9 +24,9 @@ function ColumnSkeleton({ accent }: { accent: string }) {
 export function OrderQueueSkeleton() {
 	return (
 		<div className="grid gap-4 lg:grid-cols-3">
-			<ColumnSkeleton accent="border-amber-500/30 bg-amber-500/5" />
-			<ColumnSkeleton accent="border-sky-500/30 bg-sky-500/5" />
-			<ColumnSkeleton accent="border-emerald-500/30 bg-emerald-500/5" />
+			<ColumnSkeleton accent="border-chart-1/30 bg-chart-1/10" />
+			<ColumnSkeleton accent="border-chart-2/30 bg-chart-2/10" />
+			<ColumnSkeleton accent="border-chart-3/30 bg-chart-3/10" />
 		</div>
 	);
 }

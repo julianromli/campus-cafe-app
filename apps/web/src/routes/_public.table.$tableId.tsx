@@ -1,5 +1,6 @@
 import { api } from "@campus-cafe/backend/convex/_generated/api";
 import type { Id } from "@campus-cafe/backend/convex/_generated/dataModel";
+import { Alert, AlertDescription } from "@campus-cafe/ui/components/alert";
 import { useQuery } from "convex/react";
 import { useMemo, useState } from "react";
 import { useLocation, useParams } from "react-router";
@@ -64,9 +65,12 @@ export default function TableLandingPage() {
 			<div className="flex max-w-4xl flex-col gap-4 pb-28">
 				<TableOrderHeader table={table} />
 				{user && activeReservation ? (
-					<div className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-emerald-800 text-xs dark:text-emerald-200">
-						Reservasi aktif di meja ini — pesanan akan tertaut ke booking kamu.
-					</div>
+					<Alert>
+						<AlertDescription>
+							Reservasi aktif di meja ini — pesanan akan tertaut ke booking
+							kamu.
+						</AlertDescription>
+					</Alert>
 				) : null}
 				{user && activeOrders && activeOrders.length > 0 ? (
 					<OrderStatusInline orders={activeOrders} />

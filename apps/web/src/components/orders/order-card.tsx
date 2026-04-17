@@ -92,7 +92,7 @@ export default function OrderCard({ order }: OrderCardProps) {
 
 	return (
 		<Card className="border-border/80 bg-card/80 shadow-sm">
-			<CardHeader className="flex flex-row items-start justify-between gap-2 space-y-0 pb-2">
+			<CardHeader className="flex flex-row items-start justify-between gap-2 pb-2">
 				<div className="flex items-center gap-2">
 					<CardTitle className="font-mono text-sm">
 						#{order._id.slice(-6).toUpperCase()}
@@ -108,9 +108,9 @@ export default function OrderCard({ order }: OrderCardProps) {
 					{formatAgo(order._creationTime)}
 				</span>
 			</CardHeader>
-			<CardContent className="space-y-2 pb-2">
+			<CardContent className="flex flex-col gap-2 pb-2">
 				<p className="font-semibold text-base">{order.table.label}</p>
-				<ul className="space-y-0.5 text-muted-foreground text-xs">
+				<ul className="flex flex-col gap-0.5 text-muted-foreground text-xs">
 					{order.items.map((line) => (
 						<li key={`${order._id}-${line.menuItemId}-${line.name}`}>
 							{line.name} ×{line.qty}

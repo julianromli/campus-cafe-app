@@ -8,8 +8,14 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@campus-cafe/ui/components/card";
+import {
+	Field,
+	FieldContent,
+	FieldError,
+	FieldGroup,
+	FieldLabel,
+} from "@campus-cafe/ui/components/field";
 import { Input } from "@campus-cafe/ui/components/input";
-import { Label } from "@campus-cafe/ui/components/label";
 import { Skeleton } from "@campus-cafe/ui/components/skeleton";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery } from "convex/react";
@@ -250,55 +256,58 @@ export default function ProfilePage() {
 				<CardHeader>
 					<CardTitle className="text-base">Details</CardTitle>
 				</CardHeader>
-				<CardContent>
+				<CardContent className="flex flex-col gap-4">
 					<form
-						className="grid gap-4"
+						className="contents"
 						onSubmit={(e) => {
 							e.preventDefault();
 							e.stopPropagation();
 							void form.handleSubmit();
 						}}
 					>
-						<form.Field name="name">
-							{(field) => (
-								<div className="space-y-2">
-									<Label htmlFor={field.name}>Display name</Label>
-									<Input
-										defaultValue={user.name}
-										id={field.name}
-										name={field.name}
-										value={field.state.value}
-										onBlur={field.handleBlur}
-										onChange={(e) => field.handleChange(e.target.value)}
-									/>
-									{field.state.meta.errors.map((error, index) => (
-										<p
-											key={`${field.name}-error-${index}`}
-											className="text-destructive text-sm"
-										>
-											{error?.message}
-										</p>
-									))}
-								</div>
-							)}
-						</form.Field>
+						<FieldGroup className="gap-4">
+							<form.Field name="name">
+								{(field) => {
+									const invalid = field.state.meta.errors.length > 0;
+									return (
+										<Field data-invalid={invalid || undefined}>
+											<FieldLabel htmlFor={field.name}>Display name</FieldLabel>
+											<FieldContent>
+												<Input
+													defaultValue={user.name}
+													id={field.name}
+													name={field.name}
+													value={field.state.value}
+													aria-invalid={invalid}
+													onBlur={field.handleBlur}
+													onChange={(e) => field.handleChange(e.target.value)}
+												/>
+												<FieldError errors={field.state.meta.errors} />
+											</FieldContent>
+										</Field>
+									);
+								}}
+							</form.Field>
 
-						<form.Field name="phone">
-							{(field) => (
-								<div className="space-y-2">
-									<Label htmlFor={field.name}>Phone</Label>
-									<Input
-										id={field.name}
-										name={field.name}
-										placeholder="Optional"
-										type="tel"
-										value={field.state.value}
-										onBlur={field.handleBlur}
-										onChange={(e) => field.handleChange(e.target.value)}
-									/>
-								</div>
-							)}
-						</form.Field>
+							<form.Field name="phone">
+								{(field) => (
+									<Field>
+										<FieldLabel htmlFor={field.name}>Phone</FieldLabel>
+										<FieldContent>
+											<Input
+												id={field.name}
+												name={field.name}
+												placeholder="Optional"
+												type="tel"
+												value={field.state.value}
+												onBlur={field.handleBlur}
+												onChange={(e) => field.handleChange(e.target.value)}
+											/>
+										</FieldContent>
+									</Field>
+								)}
+							</form.Field>
+						</FieldGroup>
 
 						<form.Subscribe
 							selector={(state) => ({

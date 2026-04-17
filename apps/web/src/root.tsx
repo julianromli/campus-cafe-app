@@ -1,4 +1,13 @@
 import { env } from "@campus-cafe/env/web";
+import { Button } from "@campus-cafe/ui/components/button";
+import {
+	Card,
+	CardContent,
+	CardDescription,
+	CardFooter,
+	CardHeader,
+	CardTitle,
+} from "@campus-cafe/ui/components/card";
 import { Toaster } from "@campus-cafe/ui/components/sonner";
 
 import "./index.css";
@@ -6,6 +15,7 @@ import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { ConvexReactClient } from "convex/react";
 import {
 	isRouteErrorResponse,
+	Link,
 	Links,
 	Meta,
 	Outlet,
@@ -22,19 +32,10 @@ const convex = new ConvexReactClient(env.VITE_CONVEX_URL, {
 	expectAuth: true,
 });
 
-const themeColor = "#0f172a";
+/** Matches `.dark` `--background` in `@campus-cafe/ui/globals.css` (oklch taupe). */
+const themeColor = "#1b1a19";
 
 export const links: Route.LinksFunction = () => [
-	{ rel: "preconnect", href: "https://fonts.googleapis.com" },
-	{
-		rel: "preconnect",
-		href: "https://fonts.gstatic.com",
-		crossOrigin: "anonymous",
-	},
-	{
-		rel: "stylesheet",
-		href: "https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap",
-	},
 	{ rel: "manifest", href: "/manifest.webmanifest" },
 	{ href: "/icons/icon.svg", rel: "icon", type: "image/svg+xml" },
 	{
@@ -52,7 +53,7 @@ export const links: Route.LinksFunction = () => [
 
 export function Layout({ children }: { children: React.ReactNode }) {
 	return (
-		<html lang="en">
+		<html className="dark" lang="en" suppressHydrationWarning>
 			<head>
 				<meta charSet="utf-8" />
 				<meta content={themeColor} name="theme-color" />
@@ -100,14 +101,23 @@ export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
 		stack = error.stack;
 	}
 	return (
-		<main className="container mx-auto p-4 pt-16">
-			<h1>{message}</h1>
-			<p>{details}</p>
-			{stack && (
-				<pre className="w-full overflow-x-auto p-4">
-					<code>{stack}</code>
-				</pre>
-			)}
-		</main>
+		<div className="flex min-h-svh items-center justify-center bg-background p-4">
+			<Card className="w-full max-w-lg">
+				<CardHeader>
+					<CardTitle>{message}</CardTitle>
+					<CardDescription>{details}</CardDescription>
+				</CardHeader>
+				{stack ? (
+					<CardContent>
+						<pre className="max-h-64 w-full overflow-auto rounded-md bg-muted p-4 text-xs">
+							<code>{stack}</code>
+						</pre>
+					</CardContent>
+				) : null}
+				<CardFooter className="flex flex-wrap gap-2">
+					<Button render={<Link to="/" />}>Back home</Button>
+				</CardFooter>
+			</Card>
+		</div>
 	);
 }

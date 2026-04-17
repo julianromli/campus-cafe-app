@@ -46,7 +46,7 @@ export default function StaffLayout() {
 	return (
 		<div className="min-h-svh bg-background text-foreground md:grid md:grid-cols-[240px_1fr]">
 			<div className="flex items-center justify-between border-border border-b p-4 md:hidden">
-				<div className="space-y-0.5">
+				<div className="flex flex-col gap-0.5">
 					<p className="text-muted-foreground text-xs uppercase tracking-[0.2em]">
 						Campus Cafe
 					</p>
@@ -59,7 +59,7 @@ export default function StaffLayout() {
 					size="icon"
 					variant="outline"
 				>
-					<MenuIcon className="size-5" />
+					<MenuIcon />
 				</Button>
 			</div>
 
@@ -79,7 +79,7 @@ export default function StaffLayout() {
 
 			<aside className="hidden border-border border-b md:flex md:min-h-svh md:flex-col md:border-r md:border-b-0">
 				<div className="flex w-full flex-col gap-6 p-4">
-					<div className="space-y-1">
+					<div className="flex flex-col gap-1">
 						<p className="text-muted-foreground text-xs uppercase tracking-[0.2em]">
 							Campus Cafe
 						</p>

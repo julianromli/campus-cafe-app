@@ -84,7 +84,7 @@ export function InstallPromptBanner() {
 			>
 				<div className="flex items-start gap-3">
 					<ShareIcon aria-hidden className="mt-0.5 size-5 shrink-0" />
-					<div className="min-w-0 flex-1 space-y-1 text-sm">
+					<div className="flex min-w-0 flex-1 flex-col gap-1 text-sm">
 						<p className="font-medium">Tambahkan ke Layar Utama</p>
 						<p className="text-muted-foreground text-xs leading-relaxed">
 							Ketuk tombol bagikan{" "}
@@ -120,7 +120,7 @@ export function InstallPromptBanner() {
 			<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 				<div className="flex min-w-0 flex-1 items-start gap-3">
 					<DownloadIcon aria-hidden className="mt-0.5 size-5 shrink-0" />
-					<div className="min-w-0 space-y-1 text-sm">
+					<div className="flex min-w-0 flex-col gap-1 text-sm">
 						<p className="font-medium">Instal Campus Cafe</p>
 						<p className="text-muted-foreground text-xs">
 							Akses lebih cepat dari layar utama — pembaruan otomatis.

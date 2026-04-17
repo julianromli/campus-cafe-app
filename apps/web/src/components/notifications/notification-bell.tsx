@@ -74,7 +74,7 @@ export default function NotificationBell() {
 										className={cn(
 											"w-full border-border border-b px-3 py-2.5 text-left text-xs transition-colors hover:bg-muted/60",
 											n.type === "cancellation_refund" &&
-												"border-l-4 border-l-amber-500 pl-2",
+												"border-l-4 border-l-primary pl-2",
 											!n.read && "bg-muted/30",
 										)}
 										onClick={() => {
