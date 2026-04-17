@@ -11,51 +11,51 @@
 ## Quick Reference: All Tasks
 
 
-| ID    | Title                                                | Epic          | Status | Priority | Depends On                 |
-| ----- | ---------------------------------------------------- | ------------- | ------ | -------- | -------------------------- |
-| B-001 | Convex schema — all tables & indexes                 | Foundation    | ✅ Done | P0       | —                          |
-| B-002 | Role-based auth helpers (Convex)                     | Foundation    | ✅ Done | P0       | B-001                      |
-| B-003 | Better-Auth: Google OAuth + email verification       | Foundation    | ✅ Done | P0       | —                          |
-| B-004 | User profile — Convex queries & mutations            | Foundation    | ✅ Done | P0       | B-001, B-002               |
-| B-005 | React Router route tree setup                        | Foundation    | ✅ Done | P0       | —                          |
-| B-006 | App shell layouts (customer, staff, admin)           | Foundation    | ✅ Done | P0       | B-005                      |
-| B-007 | In-app notifications system (Convex)                 | Foundation    | ✅ Done | P1       | B-001, B-002               |
-| B-008 | Resend email action setup                            | Foundation    | ✅ Done | P1       | —                          |
-| B-009 | Tables — Convex queries & mutations                  | Tables        | ✅ Done | P0       | B-001, B-002               |
-| B-010 | Admin: table layout editor UI                        | Tables        | ✅ Done | P0       | B-009, B-006               |
-| B-011 | Customer: interactive floor plan                     | Tables        | ✅ Done | P0       | B-009, B-006               |
-| B-012 | Reservations — Convex queries & mutations            | Tables        | ✅ Done | P0       | B-001, B-002, B-009        |
-| B-013 | Mayar.id payment — actions & webhook handler         | Tables        | ✅ Done | P0       | B-001, B-012               |
-| B-014 | Reservation form + booking flow UI                   | Tables        | ✅ Done | P0       | B-012, B-013, B-011        |
-| B-015 | My Reservations page (customer)                      | Tables        | ✅ Done | P0       | B-012, B-006               |
-| B-016 | Staff/Admin: live reservation operations board       | Tables        | ✅ Done | P0       | B-012, B-009, B-006        |
-| B-017 | Events — Convex queries & mutations (listing + `externalUrl`) | Events        | ⬜ Todo | P0       | B-001, B-002               |
-| B-018 | *(Cancelled)* In-app event registrations & ticketing | Events        | ⛔ Cancelled | —   | —                          |
-| B-019 | Homepage: event listing section                      | Events        | ⬜ Todo | P0       | B-017, B-006               |
-| B-020 | Event detail page (info + outbound official link)  | Events        | ⬜ Todo | P0       | B-017, B-006               |
-| B-021 | *(Cancelled)* Post-registration reserve prompt     | Events        | ⛔ Cancelled | —   | —                          |
-| B-022 | Admin: event listing CRUD & publish                  | Events        | ⬜ Todo | P0       | B-017, B-006               |
-| B-023 | *(Cancelled)* Admin event attendees + CSV          | Events        | ⛔ Cancelled | —   | —                          |
-| B-024 | Menu — Convex queries & mutations                    | Menu & Orders | ⬜ Todo | P0       | B-001, B-002               |
-| B-025 | Admin/Staff: menu management UI                      | Menu & Orders | ⬜ Todo | P0       | B-024, B-006               |
-| B-026 | QR code landing page (`/table/:tableId`)             | Menu & Orders | ⬜ Todo | P0       | B-024, B-006               |
-| B-027 | Customer: menu view + cart                           | Menu & Orders | ⬜ Todo | P0       | B-024, B-026               |
-| B-028 | Orders — Convex queries & mutations                  | Menu & Orders | ⬜ Todo | P0       | B-001, B-002, B-012        |
-| B-029 | Staff: live kitchen order queue                      | Menu & Orders | ⬜ Todo | P0       | B-028, B-006               |
-| B-030 | Customer: order status tracking                      | Menu & Orders | ⬜ Todo | P0       | B-028, B-027               |
-| B-031 | Analytics — Convex queries                           | Dashboard     | ✅ Done | P1       | B-012, B-028               |
-| B-032 | Admin: analytics dashboard UI                        | Dashboard     | ✅ Done | P1       | B-031, B-006               |
-| B-033 | Profile page (customer)                              | Users         | ✅ Done | P1       | B-004, B-006               |
-| B-034 | Admin: staff management (invite, role, revoke)       | Users         | ✅ Done | P1       | B-004, B-006, B-008        |
-| B-035 | Email: booking confirmation                          | Notifications | ⬜ Todo | P1       | B-008, B-013               |
-| B-036 | *(Cancelled)* Email: event registration confirmation | Notifications | ⛔ Cancelled | —   | —                          |
-| B-037 | Email: cancellation notice (reservations)            | Notifications | ⬜ Todo | P1       | B-008, B-012               |
-| B-038 | *(Cancelled)* Email: event reminder (registrations)  | Notifications | ⛔ Cancelled | —   | —                          |
-| B-039 | Admin in-app notification: cancellation refund alert | Notifications | ⬜ Todo | P1       | B-007, B-012               |
-| B-040 | Admin: manual payment sync button                    | Polish        | ⬜ Todo | P2       | B-013                      |
-| B-041 | Skeleton loading states (all data views)             | Polish        | ⬜ Todo | P2       | B-011, B-019, B-029, B-032 |
-| B-042 | PWA manifest + installable prompt                    | Polish        | ⬜ Todo | P2       | —                          |
-| B-043 | Mobile responsive audit (375px+)                     | Polish        | ⬜ Todo | P2       | all UI tasks               |
+| ID    | Title                                                         | Epic          | Status      | Priority | Depends On                 |
+| ----- | ------------------------------------------------------------- | ------------- | ----------- | -------- | -------------------------- |
+| B-001 | Convex schema — all tables & indexes                          | Foundation    | ✅ Done      | P0       | —                          |
+| B-002 | Role-based auth helpers (Convex)                              | Foundation    | ✅ Done      | P0       | B-001                      |
+| B-003 | Better-Auth: Google OAuth + email verification                | Foundation    | ✅ Done      | P0       | —                          |
+| B-004 | User profile — Convex queries & mutations                     | Foundation    | ✅ Done      | P0       | B-001, B-002               |
+| B-005 | React Router route tree setup                                 | Foundation    | ✅ Done      | P0       | —                          |
+| B-006 | App shell layouts (customer, staff, admin)                    | Foundation    | ✅ Done      | P0       | B-005                      |
+| B-007 | In-app notifications system (Convex)                          | Foundation    | ✅ Done      | P1       | B-001, B-002               |
+| B-008 | Resend email action setup                                     | Foundation    | ✅ Done      | P1       | —                          |
+| B-009 | Tables — Convex queries & mutations                           | Tables        | ✅ Done      | P0       | B-001, B-002               |
+| B-010 | Admin: table layout editor UI                                 | Tables        | ✅ Done      | P0       | B-009, B-006               |
+| B-011 | Customer: interactive floor plan                              | Tables        | ✅ Done      | P0       | B-009, B-006               |
+| B-012 | Reservations — Convex queries & mutations                     | Tables        | ✅ Done      | P0       | B-001, B-002, B-009        |
+| B-013 | Mayar.id payment — actions & webhook handler                  | Tables        | ✅ Done      | P0       | B-001, B-012               |
+| B-014 | Reservation form + booking flow UI                            | Tables        | ✅ Done      | P0       | B-012, B-013, B-011        |
+| B-015 | My Reservations page (customer)                               | Tables        | ✅ Done      | P0       | B-012, B-006               |
+| B-016 | Staff/Admin: live reservation operations board                | Tables        | ✅ Done      | P0       | B-012, B-009, B-006        |
+| B-017 | Events — Convex queries & mutations (listing + `externalUrl`) | Events        | ✅ Done      | P0       | B-001, B-002               |
+| B-018 | *(Cancelled)* In-app event registrations & ticketing          | Events        | ⛔ Cancelled | —        | —                          |
+| B-019 | Homepage: event listing section                               | Events        | ✅ Done      | P0       | B-017, B-006               |
+| B-020 | Event detail page (info + outbound official link)             | Events        | ✅ Done      | P0       | B-017, B-006               |
+| B-021 | *(Cancelled)* Post-registration reserve prompt                | Events        | ⛔ Cancelled | —        | —                          |
+| B-022 | Admin: event listing CRUD & publish                           | Events        | ✅ Done      | P0       | B-017, B-006               |
+| B-023 | *(Cancelled)* Admin event attendees + CSV                     | Events        | ⛔ Cancelled | —        | —                          |
+| B-024 | Menu — Convex queries & mutations                             | Menu & Orders | ✅ Done      | P0       | B-001, B-002               |
+| B-025 | Admin/Staff: menu management UI                               | Menu & Orders | ✅ Done      | P0       | B-024, B-006               |
+| B-026 | QR code landing page (`/table/:tableId`)                      | Menu & Orders | ✅ Done      | P0       | B-024, B-006               |
+| B-027 | Customer: menu view + cart                                    | Menu & Orders | ✅ Done      | P0       | B-024, B-026               |
+| B-028 | Orders — Convex queries & mutations                           | Menu & Orders | ✅ Done      | P0       | B-001, B-002, B-012        |
+| B-029 | Staff: live kitchen order queue                               | Menu & Orders | ✅ Done      | P0       | B-028, B-006               |
+| B-030 | Customer: order status tracking                               | Menu & Orders | ✅ Done      | P0       | B-028, B-027               |
+| B-031 | Analytics — Convex queries                                    | Dashboard     | ✅ Done      | P1       | B-012, B-028               |
+| B-032 | Admin: analytics dashboard UI                                 | Dashboard     | ✅ Done      | P1       | B-031, B-006               |
+| B-033 | Profile page (customer)                                       | Users         | ✅ Done      | P1       | B-004, B-006               |
+| B-034 | Admin: staff management (invite, role, revoke)                | Users         | ✅ Done      | P1       | B-004, B-006, B-008        |
+| B-035 | Email: booking confirmation                                   | Notifications | ✅ Done      | P1       | B-008, B-013               |
+| B-036 | *(Cancelled)* Email: event registration confirmation          | Notifications | ⛔ Cancelled | —        | —                          |
+| B-037 | Email: cancellation notice (reservations)                     | Notifications | ✅ Done      | P1       | B-008, B-012               |
+| B-038 | *(Cancelled)* Email: event reminder (registrations)           | Notifications | ⛔ Cancelled | —        | —                          |
+| B-039 | Admin in-app notification: cancellation refund alert          | Notifications | ✅ Done      | P1       | B-007, B-012               |
+| B-040 | Admin: manual payment sync button                             | Polish        | ⬜ Todo      | P2       | B-013                      |
+| B-041 | Skeleton loading states (all data views)                      | Polish        | ⬜ Todo      | P2       | B-011, B-019, B-029, B-032 |
+| B-042 | PWA manifest + installable prompt                             | Polish        | ⬜ Todo      | P2       | —                          |
+| B-043 | Mobile responsive audit (375px+)                              | Polish        | ⬜ Todo      | P2       | all UI tasks               |
 
 
 **Priority legend:** P0 = launch blocker · P1 = important · P2 = nice-to-have pre-launch
@@ -414,6 +414,8 @@ Admin routes (requires role: admin):
 
 **Status:** ✅ Done | **Priority:** P1 | **Depends on:** B-001, B-002
 
+**Implementation note:** Spec originally listed only backend APIs; **admin notification bell UI** and `notifyAdminsOfCancellationRefund` were completed in **Phase 7** (see `apps/web/src/components/notifications/notification-bell.tsx` and `packages/backend/convex/notifications.ts`).
+
 **File to create:** `packages/backend/convex/notifications.ts`
 
 ```ts
@@ -444,24 +446,13 @@ Admin routes (requires role: admin):
 
 **Status:** ✅ Done | **Priority:** P1 | **Depends on:** —
 
+**Implementation note:** Uses the official `**@convex-dev/resend`** Convex component (durable queue, retries) with `internalMutation` senders in `packages/backend/convex/emails.ts` — **not** a `"use node"` `internalAction` + raw SDK as in the original sketch below.
+
 **File to create:** `packages/backend/convex/emails.ts`
 
-This file must begin with `"use node";` because it uses the Resend Node.js SDK.
+**Environment variables:** `RESEND_API_KEY` (required), optional `EMAIL_FROM_ADDRESS`, `RESEND_TEST_MODE` (`false` to send beyond Resend test addresses). See `docs/NOTES.md`.
 
-```ts
-"use node";
-import { internalAction } from "./_generated/server";
-import { v } from "convex/values";
-// Import: import { Resend } from "resend";
-
-// Internal action: sendEmail({ to, subject, htmlBody })
-// Uses RESEND_API_KEY from Convex environment variables.
-// Log success/failure but do not throw — email failure should never crash the main flow.
-```
-
-**Environment variable:** Add `RESEND_API_KEY` to Convex env (`npx convex env set RESEND_API_KEY ...`).
-
-**Done when:** Calling the internal action with a test email address delivers an email.
+**Done when:** Booking/cancellation flows enqueue email via the Resend component and failures are logged without breaking webhooks or mutations.
 
 ---
 
@@ -724,7 +715,7 @@ This is a slide-over panel (shadcn `Sheet`) that opens when customer clicks a ta
 
 ### B-017 · Events — Convex Queries & Mutations
 
-**Status:** ⬜ Todo | **Priority:** P0 | **Depends on:** B-001, B-002
+**Status:** ✅ Done | **Priority:** P0 | **Depends on:** B-001, B-002
 
 **File to create:** `packages/backend/convex/events.ts`
 
@@ -758,9 +749,9 @@ Superseded by PRD v1.3. Do **not** implement `eventRegistrations.ts`, Mayar flow
 
 ### B-019 · Homepage: Event Listing Section
 
-**Status:** ⬜ Todo | **Priority:** P0 | **Depends on:** B-017, B-006
+**Status:** ✅ Done | **Priority:** P0 | **Depends on:** B-017, B-006
 
-**File to edit:** `apps/web/src/routes/_public._index.tsx` (or project’s public index route)
+**Files to edit:** `apps/web/src/routes/_public._index.tsx`, `apps/web/src/routes/_public.events._index.tsx` (dedicated `/events` listing)
 
 **Homepage sections:**
 
@@ -780,7 +771,7 @@ Superseded by PRD v1.3. Do **not** implement `eventRegistrations.ts`, Mayar flow
 
 ### B-020 · Event Detail Page (info + official link)
 
-**Status:** ⬜ Todo | **Priority:** P0 | **Depends on:** B-017, B-006
+**Status:** ✅ Done | **Priority:** P0 | **Depends on:** B-017, B-006
 
 **File to edit:** `apps/web/src/routes/_public.events.$id.tsx`
 
@@ -807,7 +798,7 @@ Removed: there is no in-app event registration step to follow.
 
 ### B-022 · Admin: Event Listing CRUD & Publish
 
-**Status:** ⬜ Todo | **Priority:** P0 | **Depends on:** B-017, B-006
+**Status:** ✅ Done | **Priority:** P0 | **Depends on:** B-017, B-006
 
 **File to edit:** `apps/web/src/routes/admin.events.tsx`
 
@@ -817,7 +808,7 @@ Removed: there is no in-app event registration step to follow.
 
 **Create/Edit form:**
 
-- Title, category, description (rich text), cover image, start/end datetime, **`externalUrl` (required to publish)**, Draft / Published
+- Title, category, description (rich text), cover image, start/end datetime, `**externalUrl` (required to publish)**, Draft / Published
 
 **Done when:** Admin can publish an event with a valid official link and it appears in `listPublishedUpcoming`.
 
@@ -839,7 +830,7 @@ Superseded by PRD v1.3 — attendees live on the external platform.
 
 ### B-024 · Menu — Convex Queries & Mutations
 
-**Status:** ⬜ Todo | **Priority:** P0 | **Depends on:** B-001, B-002
+**Status:** ✅ Done | **Priority:** P0 | **Depends on:** B-001, B-002
 
 **File to create:** `packages/backend/convex/menu.ts`
 
@@ -869,7 +860,7 @@ Superseded by PRD v1.3 — attendees live on the external platform.
 
 ### B-025 · Admin/Staff: Menu Management UI
 
-**Status:** ⬜ Todo | **Priority:** P0 | **Depends on:** B-024, B-006
+**Status:** ✅ Done | **Priority:** P0 | **Depends on:** B-024, B-006
 
 **File to edit:** `apps/web/src/routes/admin/menu.tsx` (also `staff/menu.tsx`)
 
@@ -899,7 +890,7 @@ Superseded by PRD v1.3 — attendees live on the external platform.
 
 ### B-026 · QR Code Landing Page (`/table/:tableId`)
 
-**Status:** ⬜ Todo | **Priority:** P0 | **Depends on:** B-024, B-006
+**Status:** ✅ Done | **Priority:** P0 | **Depends on:** B-024, B-006
 
 **File to edit:** `apps/web/src/routes/table.$tableId.tsx`
 
@@ -930,7 +921,7 @@ Superseded by PRD v1.3 — attendees live on the external platform.
 
 ### B-027 · Customer: Menu View + Cart
 
-**Status:** ⬜ Todo | **Priority:** P0 | **Depends on:** B-024, B-026
+**Status:** ✅ Done | **Priority:** P0 | **Depends on:** B-024, B-026
 
 **Components to create:**
 
@@ -963,7 +954,7 @@ Superseded by PRD v1.3 — attendees live on the external platform.
 
 ### B-028 · Orders — Convex Queries & Mutations
 
-**Status:** ⬜ Todo | **Priority:** P0 | **Depends on:** B-001, B-002, B-012
+**Status:** ✅ Done | **Priority:** P0 | **Depends on:** B-001, B-002, B-012
 
 **File to create:** `packages/backend/convex/orders.ts`
 
@@ -998,7 +989,7 @@ Superseded by PRD v1.3 — attendees live on the external platform.
 
 ### B-029 · Staff: Live Kitchen Order Queue
 
-**Status:** ⬜ Todo | **Priority:** P0 | **Depends on:** B-028, B-006
+**Status:** ✅ Done | **Priority:** P0 | **Depends on:** B-028, B-006
 
 **File to edit:** `apps/web/src/routes/staff/orders.tsx`
 
@@ -1020,7 +1011,7 @@ Superseded by PRD v1.3 — attendees live on the external platform.
 
 ### B-030 · Customer: Order Status Tracking
 
-**Status:** ⬜ Todo | **Priority:** P0 | **Depends on:** B-028, B-027
+**Status:** ✅ Done | **Priority:** P0 | **Depends on:** B-028, B-027
 
 **File to edit:** `apps/web/src/routes/my-orders.tsx`
 
@@ -1060,12 +1051,12 @@ Superseded by PRD v1.3 — attendees live on the external platform.
 //   - todayReservations: count of confirmed reservations with startTime on today's date
 //   - occupiedTables: count of tables with status "booked" or "occupied"
 //   - totalTables: count of non-inactive tables
-//   - activeOrders: count of orders with status "pending" or "preparing"
+//   - publishedEventsActive: published events where endTime >= reference time (Events Slice)
+//   - activeOrders: placeholder (0 until orders ship)
 //   - todayRevenue: sum of amount from payments where status="paid" and _creationTime >= today midnight
 
 // thirtyDayTrends:
-//   Returns an array of 30 objects { date: "YYYY-MM-DD", reservations, eventRegistrations, orderCount }
-//   NOTE: eventRegistrations may stay 0 — in-app event registration is out of scope (PRD v1.3)
+//   Returns an array of 30 objects { date: "YYYY-MM-DD", reservations, orderCount }
 //   NOTE: do NOT use Date.now() directly in this query — accept a `referenceTimestamp` argument
 //   from the client instead, to comply with Convex query caching rules
 ```
@@ -1082,9 +1073,9 @@ Superseded by PRD v1.3 — attendees live on the external platform.
 
 **Layout:**
 
-- Top row: 4 stat cards — Reservasi Hari Ini, Meja Terisi, Pesanan Aktif, Pendapatan Hari Ini
+- Top row: 4 stat cards — Reservasi Hari Ini, Meja Terisi, Event publik aktif, Pendapatan Hari Ini
 - Middle: Line chart — 30-day reservations trend (use `recharts` via shadcn/ui chart component)
-- Bottom: Two smaller charts side by side — e.g. food order trend + optional second metric (not in-app event attendees)
+- Bottom: Two info cards — e.g. event listing note + placeholder for future metrics (not in-app event attendees)
 
 **Stat cards:**
 
@@ -1147,11 +1138,11 @@ Superseded by PRD v1.3 — attendees live on the external platform.
 
 ### B-035 · Email: Booking Confirmation
 
-**Status:** ⬜ Todo | **Priority:** P1 | **Depends on:** B-008, B-013
+**Status:** ✅ Done | **Priority:** P1 | **Depends on:** B-008, B-013
 
-**Trigger:** Called from the Mayar.id webhook handler (`http.ts`) after `reservations.confirm` succeeds.
+**Trigger:** Called from `packages/backend/convex/payments.ts` `mayarWebhook` after `reservations.confirm` and `payments.markPaid` succeed for `type === "reservation"`.
 
-**Add internal action to `emails.ts`:** `sendBookingConfirmation({ reservationId })`
+**Implemented in `emails.ts`:** internal mutation `sendBookingConfirmation({ reservationId })`
 
 - Fetch reservation + table + user data
 - Send via Resend to user's email
@@ -1170,11 +1161,11 @@ Superseded by PRD v1.3 — no in-app event registration emails.
 
 ### B-037 · Email: Cancellation Notice (Reservations)
 
-**Status:** ⬜ Todo | **Priority:** P1 | **Depends on:** B-008, B-012
+**Status:** ✅ Done | **Priority:** P1 | **Depends on:** B-008, B-012
 
-**Trigger:** Called from `reservations.cancel` when a table reservation is cancelled.
+**Trigger:** Scheduled from `reservations.cancel` via `ctx.scheduler.runAfter(0, internal.emails.sendCancellationNotice, …)` after status is set to `cancelled`.
 
-**Add internal action:** `sendCancellationNotice({ reservationId })`
+**Implemented in `emails.ts`:** internal mutation `sendCancellationNotice({ reservationId })`
 
 - Subject: "Pembatalan Dikonfirmasi — Campus Cafe"
 - Content: reservation details, refund message ("Refund akan diproses dalam 1–3 hari kerja melalui metode pembayaran asal")
@@ -1191,24 +1182,11 @@ Superseded by PRD v1.3 — no registrant lists in-app.
 
 ### B-039 · Admin In-App Notification: Cancellation Refund Alert
 
-**Status:** ⬜ Todo | **Priority:** P1 | **Depends on:** B-007, B-012
+**Status:** ✅ Done | **Priority:** P1 | **Depends on:** B-007, B-012
 
-**Trigger:** Called from `reservations.cancel` when the cancelled reservation had a payment (`paymentRef` is set).
+**Trigger:** Scheduled from `reservations.cancel` via `ctx.scheduler.runAfter(0, internal.notifications.notifyAdminsOfCancellationRefund, …)` when `paymentRef` was set before cancel.
 
-**Implementation in `reservations.cancel`:**
-
-```ts
-// After setting status to "cancelled":
-// 1. Find all users with role = "admin"
-// 2. For each admin, call internal.notifications.create({
-//      targetUserId: admin._id,
-//      type: "cancellation_refund",
-//      title: "Pembatalan — Perlu Refund Manual",
-//      message: `${customerName} membatalkan reservasi Meja ${tableLabel} (${date} ${time}). 
-//                Jumlah: Rp${amount.toLocaleString("id-ID")}. Proses refund di dashboard Mayar.id.`,
-//      metadata: { reservationId, paymentRef, amount }
-//    })
-```
+**Implementation:** `internal.notifications.notifyAdminsOfCancellationRefund` inserts one `notifications` row per admin (`by_role` index) with `type: "cancellation_refund"` and metadata `{ reservationId, paymentRef, amount, tableId }`.
 
 **Done when:** Cancelling a paid reservation causes the notification bell to show a new notification for admin within 2 seconds.
 
@@ -1305,6 +1283,7 @@ apps/web/src/
 ├── routes.ts                  ← B-005 (updated)
 ├── routes/
 │   ├── _public._index.tsx     ← B-019
+│   ├── _public.events._index.tsx  ← B-019 (/events listing)
 │   ├── sign-in.tsx
 │   ├── sign-up.tsx
 │   ├── reserve.tsx            ← B-011

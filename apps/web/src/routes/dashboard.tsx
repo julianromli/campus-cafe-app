@@ -1,5 +1,10 @@
 import { api } from "@campus-cafe/backend/convex/_generated/api";
-import { Authenticated, AuthLoading, Unauthenticated, useQuery } from "convex/react";
+import {
+	Authenticated,
+	AuthLoading,
+	Unauthenticated,
+	useQuery,
+} from "convex/react";
 import { useState } from "react";
 
 import SignInForm from "@/components/sign-in-form";
@@ -7,35 +12,35 @@ import SignUpForm from "@/components/sign-up-form";
 import UserMenu from "@/components/user-menu";
 
 function PrivateDashboardContent() {
-  const privateData = useQuery(api.privateData.get);
+	const privateData = useQuery(api.privateData.get);
 
-  return (
-    <div>
-      <h1>Dashboard</h1>
-      <p>privateData: {privateData?.message}</p>
-      <UserMenu />
-    </div>
-  );
+	return (
+		<div>
+			<h1>Dashboard</h1>
+			<p>privateData: {privateData?.message}</p>
+			<UserMenu />
+		</div>
+	);
 }
 
 export default function Dashboard() {
-  const [showSignIn, setShowSignIn] = useState(false);
+	const [showSignIn, setShowSignIn] = useState(false);
 
-  return (
-    <>
-      <Authenticated>
-        <PrivateDashboardContent />
-      </Authenticated>
-      <Unauthenticated>
-        {showSignIn ? (
-          <SignInForm onSwitchToSignUp={() => setShowSignIn(false)} />
-        ) : (
-          <SignUpForm onSwitchToSignIn={() => setShowSignIn(true)} />
-        )}
-      </Unauthenticated>
-      <AuthLoading>
-        <div>Loading...</div>
-      </AuthLoading>
-    </>
-  );
+	return (
+		<>
+			<Authenticated>
+				<PrivateDashboardContent />
+			</Authenticated>
+			<Unauthenticated>
+				{showSignIn ? (
+					<SignInForm onSwitchToSignUp={() => setShowSignIn(false)} />
+				) : (
+					<SignUpForm onSwitchToSignIn={() => setShowSignIn(true)} />
+				)}
+			</Unauthenticated>
+			<AuthLoading>
+				<div>Loading...</div>
+			</AuthLoading>
+		</>
+	);
 }

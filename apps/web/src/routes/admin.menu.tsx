@@ -1,13 +1,15 @@
 import MenuManagement from "@/components/menu/menu-management";
 
 export default function AdminMenuPage() {
-  return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Kelola menu</h1>
-        <p className="text-sm text-muted-foreground">Kategori, item, ketersediaan, dan gambar.</p>
-      </div>
-      <MenuManagement mode="admin" />
-    </div>
-  );
+	return (
+		<div className="flex flex-col gap-6">
+			<div>
+				<h1 className="font-semibold text-2xl tracking-tight">Kelola menu</h1>
+				<p className="text-muted-foreground text-sm">
+					Kategori, item, ketersediaan, dan gambar.
+				</p>
+			</div>
+			<MenuManagement mode="admin" />
+		</div>
+	);
 }

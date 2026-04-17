@@ -6,14 +6,14 @@ import { mayarWebhook } from "./payments";
 const http = httpRouter();
 
 authComponent.registerRoutesLazy(http, createAuth, {
-  cors: true,
-  trustedOrigins: [process.env.SITE_URL!],
+	cors: true,
+	trustedOrigins: [process.env.SITE_URL!],
 });
 
 http.route({
-  handler: mayarWebhook,
-  method: "POST",
-  path: "/mayar/webhook",
+	handler: mayarWebhook,
+	method: "POST",
+	path: "/mayar/webhook",
 });
 
 export default http;

@@ -15,7 +15,6 @@ import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 export type TrendDay = {
 	date: string;
-	eventRegistrations: number;
 	orderCount: number;
 	reservations: number;
 };
@@ -90,7 +89,6 @@ export default function ReservationsTrendChart({
 							dot={false}
 							activeDot={{ r: 4 }}
 						/>
-						{/* TODO(B-018): <Line dataKey="eventRegistrations" ... /> */}
 						{/* TODO(B-028): <Line dataKey="orderCount" ... /> */}
 					</LineChart>
 				</ChartContainer>

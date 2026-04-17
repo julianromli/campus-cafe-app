@@ -10,10 +10,13 @@
 
 import type * as analytics from "../analytics.js";
 import type * as auth from "../auth.js";
+import type * as emails from "../emails.js";
+import type * as events from "../events.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as menu from "../menu.js";
+import type * as notifications from "../notifications.js";
 import type * as orders from "../orders.js";
 import type * as payments from "../payments.js";
 import type * as privateData from "../privateData.js";
@@ -30,10 +33,13 @@ import type {
 declare const fullApi: ApiFromModules<{
   analytics: typeof analytics;
   auth: typeof auth;
+  emails: typeof emails;
+  events: typeof events;
   healthCheck: typeof healthCheck;
   http: typeof http;
   "lib/auth": typeof lib_auth;
   menu: typeof menu;
+  notifications: typeof notifications;
   orders: typeof orders;
   payments: typeof payments;
   privateData: typeof privateData;
@@ -70,4 +76,5 @@ export declare const internal: FilterApi<
 
 export declare const components: {
   betterAuth: import("@convex-dev/better-auth/_generated/component.js").ComponentApi<"betterAuth">;
+  resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
 };

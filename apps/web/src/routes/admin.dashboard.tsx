@@ -11,8 +11,8 @@ import { useQuery } from "convex/react";
 import {
 	CalendarDaysIcon,
 	CircleDollarSignIcon,
-	CookingPotIcon,
 	LayoutGridIcon,
+	PartyPopperIcon,
 } from "lucide-react";
 import { useMemo } from "react";
 
@@ -86,10 +86,10 @@ export default function AdminDashboardPage() {
 					description="Status booked atau occupied vs. meja aktif"
 				/>
 				<StatCard
-					icon={CookingPotIcon}
-					label="Pesanan aktif"
-					value={overview.activeOrders}
-					hint="Aktif setelah alur pesanan (B-028) tersedia."
+					icon={PartyPopperIcon}
+					label="Event publik aktif"
+					value={overview.publishedEventsActive}
+					description="Published & belum berakhir (waktu referensi klien)"
 				/>
 				<StatCard
 					icon={CircleDollarSignIcon}
@@ -104,15 +104,16 @@ export default function AdminDashboardPage() {
 			<div className="grid gap-4 md:grid-cols-2">
 				<Card>
 					<CardHeader>
-						<CardTitle className="text-base">Tren registrasi event</CardTitle>
+						<CardTitle className="text-base">Event listing</CardTitle>
 						<CardDescription>
-							Data akan muncul setelah B-018 (event registrations) aktif.
+							Event di app hanya informatif; metrik registrasi ada di platform
+							eksternal.
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<p className="text-muted-foreground text-sm">
-							Belum tersedia — grafik mengikuti struktur data di
-							`analytics.thirtyDayTrends`.
+							Kelola listing di <code className="text-xs">/admin/events</code>.
+							Tidak ada registrasi in-app.
 						</p>
 					</CardContent>
 				</Card>

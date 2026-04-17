@@ -33,7 +33,7 @@ function utcDateKeyFromTimestamp(timestamp: number): string {
 const todayOverviewValidator = v.object({
 	activeOrders: v.number(),
 	occupiedTables: v.number(),
-	todayEventRegistrations: v.number(),
+	publishedEventsActive: v.number(),
 	todayReservations: v.number(),
 	todayRevenue: v.number(),
 	totalTables: v.number(),
@@ -41,7 +41,6 @@ const todayOverviewValidator = v.object({
 
 const trendDayValidator = v.object({
 	date: v.string(),
-	eventRegistrations: v.number(),
 	orderCount: v.number(),
 	reservations: v.number(),
 });
@@ -56,6 +55,7 @@ export const todayOverview = query({
 
 		const dayStart = getUtcDayStartMs(args.referenceTimestamp);
 		const dayEnd = dayStart + DAY_MS;
+		const now = args.referenceTimestamp;
 
 		const [bookedTables, occupiedTablesList, allTables] = await Promise.all([
 			ctx.db
@@ -84,7 +84,6 @@ export const todayOverview = query({
 				reservation.startTime >= dayStart && reservation.startTime < dayEnd,
 		).length;
 
-		// TODO: add index `by_status_creationTime` on payments if this scan becomes hot.
 		const payments = await ctx.db.query("payments").collect();
 		const todayRevenue = payments
 			.filter(
@@ -93,16 +92,20 @@ export const todayOverview = query({
 			)
 			.reduce((sum, payment) => sum + payment.amount, 0);
 
-		// TODO(B-028): count orders with status pending | preparing from orders table.
 		const activeOrders = 0;
 
-		// TODO(B-018): count event registrations created today (confirmed).
-		const todayEventRegistrations = 0;
+		const publishedEvents = await ctx.db
+			.query("events")
+			.withIndex("by_status_startTime", (q) => q.eq("status", "published"))
+			.collect();
+		const publishedEventsActive = publishedEvents.filter(
+			(e) => e.endTime >= now,
+		).length;
 
 		return {
 			activeOrders,
 			occupiedTables,
-			todayEventRegistrations,
+			publishedEventsActive,
 			todayReservations,
 			todayRevenue,
 			totalTables,
@@ -153,12 +156,8 @@ export const thirtyDayTrends = query({
 			reservationCounts.set(key, (reservationCounts.get(key) ?? 0) + 1);
 		}
 
-		// TODO(B-018): bucket confirmed event registrations by UTC day (createdAt or confirmation time).
-		// TODO(B-028): bucket orders by UTC day (_creationTime).
-
 		return dayKeys.map((date) => ({
 			date,
-			eventRegistrations: 0,
 			orderCount: 0,
 			reservations: reservationCounts.get(date) ?? 0,
 		}));

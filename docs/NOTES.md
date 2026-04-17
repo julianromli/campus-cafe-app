@@ -41,3 +41,18 @@ bun convex env set SITE_URL http://localhost:5173
 
 > Di Windows PowerShell, `$(openssl ...)` bisa diganti dengan nilai secret manual atau perintah setara untuk menghasilkan string acak.
 
+## Email (Resend) — Convex
+
+Dari folder `packages/backend`, set variabel lingkungan deployment Convex:
+
+```bash
+bun convex env set RESEND_API_KEY re_...
+bun convex env set EMAIL_FROM_ADDRESS "Campus Cafe <onboarding@resend.dev>"
+# Opsional — default mengirim hanya ke alamat uji Resend; set ke false setelah domain terverifikasi:
+bun convex env set RESEND_TEST_MODE false
+# Opsional — untuk webhook event email Resend nanti:
+# bun convex env set RESEND_WEBHOOK_SECRET ...
+```
+
+`SITE_URL` dipakai untuk link “Lihat reservasiku” di email konfirmasi.
+

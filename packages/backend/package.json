@@ -1,23 +1,26 @@
 {
-  "name": "@campus-cafe/backend",
-  "version": "1.0.0",
-  "description": "",
-  "license": "ISC",
-  "author": "",
-  "scripts": {
-    "dev": "convex dev",
-    "dev:setup": "convex dev --configure --until-success"
-  },
-  "dependencies": {
-    "@convex-dev/better-auth": "catalog:",
-    "better-auth": "catalog:",
-    "convex": "catalog:",
-    "dotenv": "catalog:",
-    "zod": "catalog:"
-  },
-  "devDependencies": {
-    "@campus-cafe/config": "workspace:*",
-    "@types/node": "^24.3.0",
-    "typescript": "^5"
-  }
+	"name": "@campus-cafe/backend",
+	"version": "1.0.0",
+	"description": "",
+	"license": "ISC",
+	"author": "",
+	"scripts": {
+		"dev": "convex dev",
+		"dev:setup": "convex dev --configure --until-success"
+	},
+	"dependencies": {
+		"@convex-dev/better-auth": "catalog:",
+		"@convex-dev/resend": "^0.2.3",
+		"better-auth": "catalog:",
+		"convex": "catalog:",
+		"convex-helpers": "^0.1.106",
+		"dotenv": "catalog:",
+		"resend": "^6.12.0",
+		"zod": "catalog:"
+	},
+	"devDependencies": {
+		"@campus-cafe/config": "workspace:*",
+		"@types/node": "^24.3.0",
+		"typescript": "^5"
+	}
 }

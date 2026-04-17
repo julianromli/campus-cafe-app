@@ -1,4 +1,8 @@
-import { createClient, type AuthFunctions, type GenericCtx } from "@convex-dev/better-auth";
+import {
+	type AuthFunctions,
+	createClient,
+	type GenericCtx,
+} from "@convex-dev/better-auth";
 import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
 import { betterAuth } from "better-auth/minimal";
 
@@ -12,95 +16,95 @@ const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
 const authFunctions: AuthFunctions = internal.auth;
 
 export const authComponent = createClient<DataModel>(components.betterAuth, {
-  authFunctions,
-  triggers: {
-    user: {
-      onCreate: async (ctx, authUser) => {
-        const existingUser = await ctx.db
-          .query("users")
-          .withIndex("by_authId", (query) => query.eq("authId", authUser._id))
-          .unique();
+	authFunctions,
+	triggers: {
+		user: {
+			onCreate: async (ctx, authUser) => {
+				const existingUser = await ctx.db
+					.query("users")
+					.withIndex("by_authId", (query) => query.eq("authId", authUser._id))
+					.unique();
 
-        if (existingUser) {
-          return;
-        }
+				if (existingUser) {
+					return;
+				}
 
-        const email = authUser.email?.trim();
-        if (!email) {
-          throw new Error("Authenticated user is missing an email address");
-        }
+				const email = authUser.email?.trim();
+				if (!email) {
+					throw new Error("Authenticated user is missing an email address");
+				}
 
-        await ctx.db.insert("users", {
-          authId: authUser._id,
-          createdAt: Date.now(),
-          email,
-          name: authUser.name?.trim() || email,
-          role: "customer",
-        });
-      },
-      onUpdate: async (ctx, authUser) => {
-        const user = await ctx.db
-          .query("users")
-          .withIndex("by_authId", (query) => query.eq("authId", authUser._id))
-          .unique();
+				await ctx.db.insert("users", {
+					authId: authUser._id,
+					createdAt: Date.now(),
+					email,
+					name: authUser.name?.trim() || email,
+					role: "customer",
+				});
+			},
+			onUpdate: async (ctx, authUser) => {
+				const user = await ctx.db
+					.query("users")
+					.withIndex("by_authId", (query) => query.eq("authId", authUser._id))
+					.unique();
 
-        if (!user) {
-          return;
-        }
+				if (!user) {
+					return;
+				}
 
-        const email = authUser.email?.trim();
-        const name = authUser.name?.trim();
+				const email = authUser.email?.trim();
+				const name = authUser.name?.trim();
 
-        await ctx.db.patch(user._id, {
-          ...(email ? { email } : {}),
-          ...(name ? { name } : {}),
-        });
-      },
-      onDelete: async (ctx, authUser) => {
-        const user = await ctx.db
-          .query("users")
-          .withIndex("by_authId", (query) => query.eq("authId", authUser._id))
-          .unique();
+				await ctx.db.patch(user._id, {
+					...(email ? { email } : {}),
+					...(name ? { name } : {}),
+				});
+			},
+			onDelete: async (ctx, authUser) => {
+				const user = await ctx.db
+					.query("users")
+					.withIndex("by_authId", (query) => query.eq("authId", authUser._id))
+					.unique();
 
-        if (!user) {
-          return;
-        }
+				if (!user) {
+					return;
+				}
 
-        await ctx.db.delete(user._id);
-      },
-    },
-  },
+				await ctx.db.delete(user._id);
+			},
+		},
+	},
 });
 
 function createAuth(ctx: GenericCtx<DataModel>) {
-  const socialProviders =
-    googleClientId && googleClientSecret
-      ? {
-          google: {
-            clientId: googleClientId,
-            clientSecret: googleClientSecret,
-          },
-        }
-      : undefined;
+	const socialProviders =
+		googleClientId && googleClientSecret
+			? {
+					google: {
+						clientId: googleClientId,
+						clientSecret: googleClientSecret,
+					},
+				}
+			: undefined;
 
-  return betterAuth({
-    baseURL: siteUrl,
-    trustedOrigins: [siteUrl],
-    database: authComponent.adapter(ctx),
-    emailAndPassword: {
-      enabled: true,
-      // Email delivery is intentionally deferred to a later sprint.
-      requireEmailVerification: false,
-    },
-    ...(socialProviders ? { socialProviders } : {}),
-    plugins: [
-      crossDomain({ siteUrl }),
-      convex({
-        authConfig,
-        jwksRotateOnTokenGenerationError: true,
-      }),
-    ],
-  });
+	return betterAuth({
+		baseURL: siteUrl,
+		trustedOrigins: [siteUrl],
+		database: authComponent.adapter(ctx),
+		emailAndPassword: {
+			enabled: true,
+			// Email delivery is intentionally deferred to a later sprint.
+			requireEmailVerification: false,
+		},
+		...(socialProviders ? { socialProviders } : {}),
+		plugins: [
+			crossDomain({ siteUrl }),
+			convex({
+				authConfig,
+				jwksRotateOnTokenGenerationError: true,
+			}),
+		],
+	});
 }
 
 export { createAuth };
