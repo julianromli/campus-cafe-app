@@ -57,7 +57,14 @@ export const todayOverview = query({
 		const dayEnd = dayStart + DAY_MS;
 		const now = args.referenceTimestamp;
 
-		const [bookedTables, occupiedTablesList, allTables] = await Promise.all([
+		const [
+			bookedTables,
+			occupiedTablesList,
+			allTables,
+			pendingOrders,
+			preparingOrders,
+			readyOrders,
+		] = await Promise.all([
 			ctx.db
 				.query("tables")
 				.withIndex("by_status", (query) => query.eq("status", "booked"))
@@ -67,6 +74,18 @@ export const todayOverview = query({
 				.withIndex("by_status", (query) => query.eq("status", "occupied"))
 				.collect(),
 			ctx.db.query("tables").collect(),
+			ctx.db
+				.query("orders")
+				.withIndex("by_status", (query) => query.eq("status", "pending"))
+				.collect(),
+			ctx.db
+				.query("orders")
+				.withIndex("by_status", (query) => query.eq("status", "preparing"))
+				.collect(),
+			ctx.db
+				.query("orders")
+				.withIndex("by_status", (query) => query.eq("status", "ready"))
+				.collect(),
 		]);
 
 		const occupiedTables = bookedTables.length + occupiedTablesList.length;
@@ -92,7 +111,8 @@ export const todayOverview = query({
 			)
 			.reduce((sum, payment) => sum + payment.amount, 0);
 
-		const activeOrders = 0;
+		const activeOrders =
+			pendingOrders.length + preparingOrders.length + readyOrders.length;
 
 		const publishedEvents = await ctx.db
 			.query("events")
@@ -131,14 +151,19 @@ export const thirtyDayTrends = query({
 		}
 
 		const reservationCounts = new Map<string, number>();
+		const orderCounts = new Map<string, number>();
 		for (const key of dayKeys) {
 			reservationCounts.set(key, 0);
+			orderCounts.set(key, 0);
 		}
 
-		const confirmedReservations = await ctx.db
-			.query("reservations")
-			.withIndex("by_status", (query) => query.eq("status", "confirmed"))
-			.collect();
+		const [confirmedReservations, allOrders] = await Promise.all([
+			ctx.db
+				.query("reservations")
+				.withIndex("by_status", (query) => query.eq("status", "confirmed"))
+				.collect(),
+			ctx.db.query("orders").collect(),
+		]);
 
 		for (const reservation of confirmedReservations) {
 			if (
@@ -156,9 +181,25 @@ export const thirtyDayTrends = query({
 			reservationCounts.set(key, (reservationCounts.get(key) ?? 0) + 1);
 		}
 
+		for (const order of allOrders) {
+			if (
+				order.createdAt < windowStartMs ||
+				order.createdAt >= windowEndExclusive
+			) {
+				continue;
+			}
+
+			const key = utcDateKeyFromTimestamp(order.createdAt);
+			if (!orderCounts.has(key)) {
+				continue;
+			}
+
+			orderCounts.set(key, (orderCounts.get(key) ?? 0) + 1);
+		}
+
 		return dayKeys.map((date) => ({
 			date,
-			orderCount: 0,
+			orderCount: orderCounts.get(date) ?? 0,
 			reservations: reservationCounts.get(date) ?? 0,
 		}));
 	},

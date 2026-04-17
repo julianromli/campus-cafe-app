@@ -2,6 +2,11 @@
 
 ## 2026-04-17
 
+### Post-launch review fixes — follow-up (#4, #6, #7)
+- **Security — open-redirect on sign-in/sign-up (`apps/web/src/lib/safe-redirect.ts`, `sign-in-form.tsx`, `sign-up-form.tsx`):** new `safeRedirect()` helper applies a path-only allowlist to the `?redirect=` query param (must start with `/`, reject `//`, `/\`, absolute URLs, and scheme URIs like `javascript:`). Both forms now sanitize the value before `navigate(redirectTo)` and `authClient.signIn.social({ callbackURL: redirectTo })`, so a crafted link can no longer bounce freshly-authenticated users to an attacker-controlled origin.
+- **Data integrity — user deletion cascade (`packages/backend/convex/auth.ts`):** the Better-Auth `onDelete` trigger no longer hard-deletes the `users` row (which would orphan `userId` references in reservations/orders/payments/notifications). Instead it **anonymizes** the record: clears `authId`, `avatarStorageId`, `avatarUrl`, `phone`; resets `name` → `"Pengguna dihapus"`, `email` → `deleted+<id>@cafe.local`, `role` → `"customer"`; deletes the avatar blob from Convex storage. Admin remains the sole trigger (via Convex / Better-Auth dashboard — no self-delete UI).
+- **Analytics — `activeOrders` + 30-day `orderCount` (`packages/backend/convex/analytics.ts`):** `todayOverview.activeOrders` now sums live orders across `pending` + `preparing` + `ready` statuses via three parallel `by_status` index reads; `thirtyDayTrends[].orderCount` counts all orders whose `createdAt` falls inside each UTC day window (full scan for MVP, shares the `Promise.all` with the reservations query). `todayRevenue` intentionally stays reservation-only.
+
 ### Post-launch review fixes (top-N from comprehensive audit)
 - **Security — Mayar webhook (`packages/backend/convex/payments.ts`):** `validateWebhookSecret` now **rejects** requests when `MAYAR_WEBHOOK_SECRET` is not configured (previously returned `true`, allowing unauthenticated webhooks). Comparison is constant-time to avoid timing attacks.
 - **Data integrity — reservation double-booking (`packages/backend/convex/reservations.ts`):** `ensureAvailability` now considers both `confirmed` **and** `pending` reservations when checking overlap, so two customers can't be sent to Mayar for the same slot. Renamed helper `listConfirmedReservationsForTable` → `listActiveReservationsForTable`.
@@ -34,7 +39,7 @@
 - **Web — customer my-orders (`apps/web/src/routes/_customer.my-orders.tsx`):** Active orders with live `OrderStatus` stepper, past orders section, and toast notifications on status transitions via status diffing in a ref.
 - **Web — staff kitchen queue (`apps/web/src/routes/staff.orders.tsx`):** `OrderQueueBoard` with Pending / Preparing / Ready columns, "Move to next stage" buttons wired to `api.orders.updateStatus`, optional new-order audio toast, and a History tab backed by `listCompletedToday` with `referenceTimestamp`.
 - **Web — menu management (`apps/web/src/routes/admin.menu.tsx` + `staff.menu.tsx`):** Shared `MenuManagement` component (mode = `"admin"` / `"staff"`) with category sidebar, item grid, per-item availability toggle, category-level bulk toggle, and `category-form-sheet.tsx` / `menu-item-form-sheet.tsx` drawers. `image-upload.tsx` uses `generateItemImageUploadUrl` + Convex storage.
-- **Follow-up (not in this phase):** `analytics.todayOverview.activeOrders` and `analytics.thirtyDayTrends[].orderCount` still return `0` (hardcoded) — wiring those to the real `orders` table is the next analytics task.
+- **Follow-up (not in this phase):** ~~`analytics.todayOverview.activeOrders` and `analytics.thirtyDayTrends[].orderCount` still return `0` (hardcoded)~~ — wired up in the 2026-04-17 follow-up entry above (active orders via `by_status` index; 30-day orderCount via `createdAt` full scan).
 - Updated `docs/BACKLOG.md` task statuses for B-024 through B-030.
 
 ### Implementation — Events Slice (listing + external link)

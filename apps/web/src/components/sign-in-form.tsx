@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import z from "zod";
 
 import { authClient, googleAuthEnabled } from "@/lib/auth-client";
+import { safeRedirect } from "@/lib/safe-redirect";
 
 type SignInFormProps = {
 	onSwitchToSignUp?: () => void;
@@ -15,7 +16,7 @@ type SignInFormProps = {
 export default function SignInForm({ onSwitchToSignUp }: SignInFormProps) {
 	const navigate = useNavigate();
 	const [searchParams] = useSearchParams();
-	const redirectTo = searchParams.get("redirect") ?? "/";
+	const redirectTo = safeRedirect(searchParams.get("redirect"));
 
 	const handleGoogleSignIn = async () => {
 		try {

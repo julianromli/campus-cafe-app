@@ -70,7 +70,21 @@ export const authComponent = createClient<DataModel>(components.betterAuth, {
 					return;
 				}
 
-				await ctx.db.delete(user._id);
+				if (user.avatarStorageId) {
+					await ctx.storage.delete(user.avatarStorageId);
+				}
+
+				// Anonymize PII but keep the `users` row so foreign keys in
+				// reservations/orders/payments/notifications remain valid.
+				await ctx.db.patch(user._id, {
+					authId: undefined,
+					avatarStorageId: undefined,
+					avatarUrl: undefined,
+					email: `deleted+${user._id}@cafe.local`,
+					name: "Pengguna dihapus",
+					phone: undefined,
+					role: "customer",
+				});
 			},
 		},
 	},
