@@ -104,6 +104,7 @@ type DbCtx = QueryCtx | MutationCtx;
 
 const CANCELLATION_CUTOFF_MS = 2 * 60 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;
+const PENDING_EXPIRY_MS = 30 * 60 * 1000;
 
 function getReservationEndTime(
 	startTime: number,
@@ -182,7 +183,7 @@ async function getReservationOrThrow(
 	return reservation;
 }
 
-async function listConfirmedReservationsForTable(
+async function listActiveReservationsForTable(
 	ctx: DbCtx,
 	tableId: Id<"tables">,
 ): Promise<AppReservation[]> {
@@ -192,7 +193,8 @@ async function listConfirmedReservationsForTable(
 		.collect();
 
 	return reservations.filter(
-		(reservation) => reservation.status === "confirmed",
+		(reservation) =>
+			reservation.status === "confirmed" || reservation.status === "pending",
 	);
 }
 
@@ -209,10 +211,7 @@ async function ensureAvailability(
 		args.startTime,
 		args.durationHours,
 	);
-	const reservations = await listConfirmedReservationsForTable(
-		ctx,
-		args.tableId,
-	);
+	const reservations = await listActiveReservationsForTable(ctx, args.tableId);
 
 	for (const reservation of reservations) {
 		if (
@@ -469,10 +468,32 @@ export const create = mutation({
 			userId: user._id,
 		});
 
+		await ctx.scheduler.runAfter(
+			PENDING_EXPIRY_MS,
+			internal.reservations.expirePendingReservation,
+			{ reservationId },
+		);
+
 		return {
 			confirmationCode,
 			reservationId,
 		};
+	},
+});
+
+export const expirePendingReservation = internalMutation({
+	args: {
+		reservationId: v.id("reservations"),
+	},
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		const reservation = await ctx.db.get(args.reservationId);
+		if (!reservation || reservation.status !== "pending") {
+			return null;
+		}
+
+		await ctx.db.patch(reservation._id, { status: "cancelled" });
+		return null;
 	},
 });
 

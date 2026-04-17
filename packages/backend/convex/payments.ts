@@ -145,11 +145,28 @@ function extractWebhookSecretCandidate(request: Request): string | null {
 function validateWebhookSecret(request: Request): boolean {
 	const expectedSecret = process.env.MAYAR_WEBHOOK_SECRET;
 	if (!expectedSecret) {
-		return true;
+		console.error(
+			"MAYAR_WEBHOOK_SECRET is not configured — rejecting webhook request. " +
+				"Set the env var in Convex to enable webhook delivery.",
+		);
+		return false;
 	}
 
 	const receivedSecret = extractWebhookSecretCandidate(request);
-	return receivedSecret === expectedSecret;
+	if (!receivedSecret) {
+		return false;
+	}
+
+	if (receivedSecret.length !== expectedSecret.length) {
+		return false;
+	}
+
+	let mismatch = 0;
+	for (let index = 0; index < expectedSecret.length; index += 1) {
+		mismatch |=
+			expectedSecret.charCodeAt(index) ^ receivedSecret.charCodeAt(index);
+	}
+	return mismatch === 0;
 }
 
 function parseWebhookPayload(body: unknown): {

@@ -61,7 +61,34 @@ bun convex env set RESEND_TEST_MODE false
 Set di Convex (`packages/backend`):
 
 - `MAYAR_API_KEY` — wajib untuk membuat link pembayaran dan polling status transaksi (admin **Sync Status**).
-- `MAYAR_WEBHOOK_SECRET` — opsional; jika diset, webhook menolak request tanpa header secret yang cocok.
+- `MAYAR_WEBHOOK_SECRET` — **wajib di production**; webhook menolak request jika env ini tidak diset. Nilai harus cocok persis dengan header `x-mayar-webhook-secret` / `x-webhook-secret` / `Authorization: Bearer …` yang dikirim Mayar.
 - `MAYAR_PAYMENT_CREATE_URL` — opsional; override endpoint **create** (default: `https://api.mayar.id/hl/v1/payment/create`).
 - `MAYAR_TRANSACTIONS_URL` — opsional; override endpoint **daftar transaksi** untuk sinkron manual (default: `https://api.mayar.id/hl/v1/transactions`).
+
+## Harga reservasi
+
+Set di Convex (`packages/backend`):
+
+- `RESERVATION_PRICE_PER_HOUR` — **wajib**; harga per jam reservasi dalam IDR (bilangan bulat). Dipakai oleh `payments.createReservationPaymentLink` untuk menghitung total = `durationHours × RESERVATION_PRICE_PER_HOUR`.
+
+## Reservation hold (auto-expire)
+
+Setelah customer klik *Reservasi* dan sebelum selesai membayar di Mayar, slot di-hold sebagai `pending` dan juga mem-blok pengguna lain untuk slot/waktu yang sama. Jika pembayaran tidak selesai dalam **30 menit**, reservasi otomatis dibatalkan oleh `internal.reservations.expirePendingReservation` (dijadwalkan via `ctx.scheduler.runAfter`). Customer yang terkena expiry dapat mencoba membooking ulang.
+
+## Environment — Frontend (`apps/web/.env`)
+
+Web app memakai Vite, jadi variabel **harus** diawali `VITE_`:
+
+- `VITE_CONVEX_URL` — URL Convex deployment (mis. `https://<dep>.convex.cloud`). Wajib.
+- `VITE_CONVEX_SITE_URL` — origin Convex HTTP actions (`https://<dep>.convex.site`). Wajib untuk auth client + webhook URL yang di-share ke Mayar.
+- `VITE_GOOGLE_CLIENT_ID` — opsional; mengaktifkan tombol sign-in Google di `/sign-in`.
+
+Salin dari `packages/backend/.env.local` (output `bun run dev:setup`) ke `apps/web/.env` untuk `VITE_CONVEX_URL` dan `VITE_CONVEX_SITE_URL`.
+
+## Environment — Better-Auth server
+
+Set di Convex (`packages/backend`):
+
+- `BETTER_AUTH_SECRET` — wajib; random 32+ byte base64.
+- `SITE_URL` — origin web app (mis. `http://localhost:5173` di dev, domain produksi di prod). Dipakai untuk trusted origins, redirect email, dan link "Lihat reservasiku" di template email.
 

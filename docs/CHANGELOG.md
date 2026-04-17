@@ -2,6 +2,16 @@
 
 ## 2026-04-17
 
+### Post-launch review fixes (top-N from comprehensive audit)
+- **Security — Mayar webhook (`packages/backend/convex/payments.ts`):** `validateWebhookSecret` now **rejects** requests when `MAYAR_WEBHOOK_SECRET` is not configured (previously returned `true`, allowing unauthenticated webhooks). Comparison is constant-time to avoid timing attacks.
+- **Data integrity — reservation double-booking (`packages/backend/convex/reservations.ts`):** `ensureAvailability` now considers both `confirmed` **and** `pending` reservations when checking overlap, so two customers can't be sent to Mayar for the same slot. Renamed helper `listConfirmedReservationsForTable` → `listActiveReservationsForTable`.
+- **Auto-expire pending holds:** `reservations.create` now schedules `internal.reservations.expirePendingReservation` to run 30 minutes after insert; the expire mutation marks still-`pending` reservations as `cancelled`, releasing the slot for other customers. No schema change (scheduled function is fire-and-forget; confirmed/cancelled reservations become no-ops).
+- **Build health — `packages/ui/tsconfig.json`:** override `types: []` so the shared UI package no longer requires `@types/node` / `@cloudflare/workers-types` from `tsconfig.base.json` — `turbo check-types` now passes in `@campus-cafe/ui`.
+- **Lint noise — `biome.json`:** added `!**/.react-router` to `files.includes` so the auto-generated RR v7 `+routes.ts` stops producing ~10k false-positive Biome diagnostics.
+- **Docs — `docs/NOTES.md`:** added dedicated sections for Mayar (now marks `MAYAR_WEBHOOK_SECRET` **wajib di production**), `RESERVATION_PRICE_PER_HOUR`, reservation hold behaviour (30-minute auto-expire), frontend env vars (`VITE_CONVEX_URL`, `VITE_CONVEX_SITE_URL`, `VITE_GOOGLE_CLIENT_ID`), and Better-Auth server vars (`BETTER_AUTH_SECRET`, `SITE_URL`).
+- **Docs — `docs/BACKLOG.md`:** aligned embedded schema snippet in B-001 with actual `packages/backend/convex/schema.ts` (events listing-only fields, `payments.type` without `event_ticket`, removed `eventRegistrations`); removed `/admin/events/:id/attendees` from the B-005 route tree; flattened admin route file paths.
+- **Docs — `docs/CHANGELOG.md`:** Phase 5 entry no longer references the cancelled B-018; clarified that the remaining analytics gap is hydrating `activeOrders` / `orderCount` from the `orders` table (post-B-028 follow-up).
+
 ### Phase 8 — Polish (B-040…B-043)
 - **B-040 — Manual payment sync:** `packages/backend/convex/payments.ts` — `applyReservationPaymentSuccess` internal mutation (shared by webhook + sync); `listAllPayments` (admin, paginated, reservation join); `syncReservationPaymentStatus` action (polls Mayar `GET /hl/v1/transactions`). Admin UI: `apps/web/src/routes/admin.payments.tsx` with filters, sync button, mobile cards. Env: optional `MAYAR_TRANSACTIONS_URL` documented in `docs/NOTES.md`.
 - **B-041 — Skeletons:** `apps/web/src/components/skeletons/` (`event-list`, `event-detail`, `floor-plan`, `order-queue`, `table`); wired on homepage events, `/events`, event detail, reserve, staff reservations, admin tables, order queue, staff orders history.
@@ -46,7 +56,7 @@
 - Updated `docs/BACKLOG.md` task statuses for B-033 and B-034.
 
 ### Phase 5 — Admin dashboard (B-031, B-032)
-- Added `packages/backend/convex/analytics.ts` with admin-only `todayOverview` and `thirtyDayTrends` queries: `referenceTimestamp` from the client (no `Date.now()` in queries); live metrics for reservations, table occupancy, and paid revenue; `activeOrders`, `todayEventRegistrations`, and per-day `eventRegistrations` / `orderCount` in trends return `0` until B-018 / B-028 populate data (TODO markers in code).
+- Added `packages/backend/convex/analytics.ts` with admin-only `todayOverview` and `thirtyDayTrends` queries: `referenceTimestamp` from the client (no `Date.now()` in queries); live metrics for reservations, table occupancy, and paid revenue; `activeOrders` and per-day `orderCount` in trends still return `0` — wiring those to the real `orders` table is the next analytics task. (Original draft referenced B-018, which was cancelled under PRD v1.3; event-registration trends are no longer in scope.)
 - Added shadcn `chart` primitive at `packages/ui/src/components/chart.tsx` (Recharts v3–compatible typings: `Partial<TooltipContentProps>`, `DefaultLegendContentProps` for legend); added `recharts` to `@campus-cafe/ui` and `apps/web`.
 - Implemented `/admin/dashboard`: stat cards (`StatCard`), 30-day reservations line chart (`ReservationsTrendChart`), skeleton loading, and placeholder cards for event/order trend charts pending later phases.
 - Updated `docs/BACKLOG.md` task statuses for B-031 and B-032.

@@ -164,6 +164,8 @@ export default defineSchema({
     .index("by_userId", ["userId"])
     .index("by_status", ["status"]),
 
+  // PRD v1.3: listing-only; no in-app registration / ticketing.
+  // Actual source of truth: packages/backend/convex/schema.ts.
   events: defineTable({
     title: v.string(),
     description: v.string(),
@@ -171,23 +173,14 @@ export default defineSchema({
     category: v.string(),
     startTime: v.number(),
     endTime: v.number(),
-    capacity: v.number(),
-    seatsRemaining: v.number(),
-    ticketPrice: v.number(),     // 0 = free
     status: v.union(v.literal("draft"), v.literal("published")),
-    registrationDeadline: v.number(),
+    externalUrl: v.optional(v.string()),   // https URL, required to publish
+    organizerName: v.optional(v.string()),
+    locationText: v.optional(v.string()),
     createdBy: v.id("users"),
   }).index("by_status_startTime", ["status", "startTime"]),
 
-  eventRegistrations: defineTable({
-    eventId: v.id("events"),
-    userId: v.id("users"),
-    ticketCode: v.string(),
-    paymentRef: v.optional(v.string()),
-    status: v.union(v.literal("confirmed"), v.literal("cancelled")),
-  })
-    .index("by_eventId", ["eventId"])
-    .index("by_userId", ["userId"]),
+  // NOTE: `eventRegistrations` was dropped in PRD v1.3 (B-018 cancelled).
 
   menuCategories: defineTable({
     name: v.string(),
@@ -232,11 +225,12 @@ export default defineSchema({
 
   payments: defineTable({
     refId: v.string(),           // Mayar.id transactionId
+    // PRD v1.3: only `reservation` + `food_order`; `event_ticket` was dropped.
     type: v.union(
       v.literal("reservation"),
-      v.literal("event_ticket")
+      v.literal("food_order")
     ),
-    targetId: v.string(),        // reservationId or eventRegistrationId
+    targetId: v.string(),        // reservationId (or future orderId)
     amount: v.number(),
     currency: v.literal("IDR"),
     status: v.union(
@@ -382,12 +376,13 @@ Staff routes (requires role: staff|admin):
 
 Admin routes (requires role: admin):
   /admin/dashboard            → routes/admin.dashboard.tsx
-  /admin/tables               → routes/admin/tables.tsx
-  /admin/events               → routes/admin/events.tsx
-  /admin/events/:id/attendees → routes/admin/events.$id.attendees.tsx
-  /admin/menu                 → routes/admin/menu.tsx
-  /admin/staff                → routes/admin/staff.tsx
-  /admin/payments             → routes/admin/payments.tsx
+  /admin/tables               → routes/admin.tables.tsx
+  /admin/events               → routes/admin.events.tsx
+  /admin/menu                 → routes/admin.menu.tsx
+  /admin/staff                → routes/admin.staff.tsx
+  /admin/payments             → routes/admin.payments.tsx
+
+  (Note: `/admin/events/:id/attendees` removed — B-023 cancelled under PRD v1.3.)
 ```
 
 **Done when:** All routes exist as files, app starts, and navigating to each URL doesn't crash.
