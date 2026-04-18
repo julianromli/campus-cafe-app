@@ -9,6 +9,21 @@ import {
 	mutation,
 	query,
 } from "./_generated/server";
+import {
+	applyOperationalTableStatus,
+	CANCELLATION_CUTOFF_MS,
+	DAY_MS,
+	getActiveConfirmedTableIds,
+	getBusinessDayRangeForTimestamp,
+	getReservationEndTime,
+	getReservationSearchWindowStart,
+	MAX_ADVANCE_BOOKING_DAYS,
+	parseBusinessDateFilter,
+	PENDING_EXPIRY_MS,
+	timeRangesOverlap,
+	type ReservationDurationHours,
+	validateReservationWindow,
+} from "./lib/reservation_utils";
 import { requireAuth, requireRole } from "./lib/auth";
 
 const durationHoursValidator = v.union(
@@ -102,26 +117,6 @@ type AppTable = Doc<"tables">;
 type AppUser = Doc<"users">;
 type DbCtx = QueryCtx | MutationCtx;
 
-const CANCELLATION_CUTOFF_MS = 2 * 60 * 60 * 1000;
-const HOUR_MS = 60 * 60 * 1000;
-const PENDING_EXPIRY_MS = 30 * 60 * 1000;
-
-function getReservationEndTime(
-	startTime: number,
-	durationHours: 1 | 2 | 3,
-): number {
-	return startTime + durationHours * HOUR_MS;
-}
-
-function timeRangesOverlap(
-	startA: number,
-	endA: number,
-	startB: number,
-	endB: number,
-): boolean {
-	return startA < endB && startB < endA;
-}
-
 function generateConfirmationCode(): string {
 	const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 	let code = "";
@@ -185,13 +180,21 @@ async function getReservationOrThrow(
 
 async function listActiveReservationsForTable(
 	ctx: DbCtx,
-	tableId: Id<"tables">,
+	args: {
+		startTime: number;
+		tableId: Id<"tables">;
+		targetEndTime: number;
+	},
 ): Promise<AppReservation[]> {
 	const reservations = await ctx.db
 		.query("reservations")
-		.withIndex("by_tableId_startTime", (query) => query.eq("tableId", tableId))
+		.withIndex("by_tableId_startTime", (query) =>
+			query
+				.eq("tableId", args.tableId)
+				.gte("startTime", getReservationSearchWindowStart(args.startTime))
+				.lt("startTime", args.targetEndTime),
+		)
 		.collect();
-
 	return reservations.filter(
 		(reservation) =>
 			reservation.status === "confirmed" || reservation.status === "pending",
@@ -211,7 +214,11 @@ async function ensureAvailability(
 		args.startTime,
 		args.durationHours,
 	);
-	const reservations = await listActiveReservationsForTable(ctx, args.tableId);
+	const reservations = await listActiveReservationsForTable(ctx, {
+		startTime: args.startTime,
+		tableId: args.tableId,
+		targetEndTime,
+	});
 
 	for (const reservation of reservations) {
 		if (
@@ -240,18 +247,6 @@ async function ensureAvailability(
 	return true;
 }
 
-function parseDateFilter(date: string): { end: number; start: number } {
-	const start = Date.parse(`${date}T00:00:00.000Z`);
-	if (Number.isNaN(start)) {
-		throw new Error("Invalid date filter");
-	}
-
-	return {
-		end: start + 24 * HOUR_MS,
-		start,
-	};
-}
-
 export const listByUser = query({
 	args: {},
 	returns: v.array(reservationWithTableValidator),
@@ -277,25 +272,29 @@ export const listByUser = query({
 export const listAll = query({
 	args: {
 		date: v.optional(v.string()),
+		referenceTimestamp: v.number(),
 	},
 	returns: v.array(reservationWithTableValidator),
 	handler: async (ctx, args) => {
 		await requireRole(ctx, "staff");
 
-		const reservations = await ctx.db.query("reservations").collect();
 		const dateRange =
-			args.date !== undefined ? parseDateFilter(args.date) : null;
-		const filteredReservations = dateRange
-			? reservations.filter((reservation) => {
-					return (
-						reservation.startTime >= dateRange.start &&
-						reservation.startTime < dateRange.end
-					);
-				})
-			: reservations;
+			args.date !== undefined
+				? parseBusinessDateFilter(args.date)
+				: getBusinessDayRangeForTimestamp(args.referenceTimestamp);
+		const rangeEnd =
+			args.date !== undefined
+				? dateRange.end
+				: dateRange.start + DAY_MS * (MAX_ADVANCE_BOOKING_DAYS + 1);
+		const reservations = await ctx.db
+			.query("reservations")
+			.withIndex("by_startTime", (query) =>
+				query.gte("startTime", dateRange.start).lt("startTime", rangeEnd),
+			)
+			.collect();
 
 		const enrichedReservations = await Promise.all(
-			[...filteredReservations]
+			[...reservations]
 				.sort((left, right) => right.startTime - left.startTime)
 				.map(async (reservation) => {
 					const table = await getTableOrThrow(ctx, reservation.tableId);
@@ -310,34 +309,32 @@ export const listAll = query({
 export const listForBoard = query({
 	args: {
 		date: v.optional(v.string()),
-		referenceStartTimestamp: v.number(),
+		referenceTimestamp: v.number(),
 	},
 	returns: v.array(reservationBoardItemValidator),
 	handler: async (ctx, args) => {
 		await requireRole(ctx, "staff");
 
-		const reservations = await ctx.db.query("reservations").collect();
-		const activeRangeStart =
+		const dateRange =
 			args.date !== undefined
-				? parseDateFilter(args.date).start
-				: args.referenceStartTimestamp;
-		const activeRangeEnd =
-			args.date !== undefined ? parseDateFilter(args.date).end : null;
-
-		const filteredReservations = reservations.filter((reservation) => {
-			if (reservation.startTime < activeRangeStart) {
-				return false;
-			}
-
-			if (activeRangeEnd !== null && reservation.startTime >= activeRangeEnd) {
-				return false;
-			}
-
-			return true;
-		});
+				? parseBusinessDateFilter(args.date)
+				: getBusinessDayRangeForTimestamp(args.referenceTimestamp);
+		const rangeEnd =
+			args.date !== undefined
+				? dateRange.end
+				: dateRange.start + DAY_MS * (MAX_ADVANCE_BOOKING_DAYS + 1);
+		const [reservations, activeBookedTableIds] = await Promise.all([
+			ctx.db
+				.query("reservations")
+				.withIndex("by_startTime", (query) =>
+					query.gte("startTime", dateRange.start).lt("startTime", rangeEnd),
+				)
+				.collect(),
+			getActiveConfirmedTableIds(ctx, args.referenceTimestamp),
+		]);
 
 		const enrichedReservations = await Promise.all(
-			[...filteredReservations]
+			[...reservations]
 				.sort((left, right) => left.startTime - right.startTime)
 				.map(async (reservation) => {
 					const [table, customer] = await Promise.all([
@@ -345,7 +342,11 @@ export const listForBoard = query({
 						ctx.db.get(reservation.userId),
 					]);
 
-					return toReservationBoardItem(table, reservation, customer);
+					return toReservationBoardItem(
+						applyOperationalTableStatus(table, activeBookedTableIds),
+						reservation,
+						customer,
+					);
 				}),
 		);
 
@@ -378,11 +379,23 @@ export const getById = query({
 export const checkAvailability = query({
 	args: {
 		durationHours: durationHoursValidator,
+		referenceTimestamp: v.number(),
 		startTime: v.number(),
 		tableId: v.id("tables"),
 	},
 	returns: v.boolean(),
 	handler: async (ctx, args) => {
+		const table = await getTableOrThrow(ctx, args.tableId);
+		if (table.status === "inactive") {
+			return false;
+		}
+
+		validateReservationWindow({
+			durationHours: args.durationHours as ReservationDurationHours,
+			referenceTimestamp: args.referenceTimestamp,
+			startTime: args.startTime,
+		});
+
 		return await ensureAvailability(ctx, args);
 	},
 });
@@ -397,7 +410,15 @@ export const checkActiveForTable = query({
 		const user = await requireAuth(ctx);
 		const reservations = await ctx.db
 			.query("reservations")
-			.withIndex("by_userId", (query) => query.eq("userId", user._id))
+			.withIndex("by_userId_startTime", (query) =>
+				query
+					.eq("userId", user._id)
+					.gte(
+						"startTime",
+						getReservationSearchWindowStart(args.referenceTimestamp),
+					)
+					.lte("startTime", args.referenceTimestamp),
+			)
 			.collect();
 
 		for (const reservation of reservations) {
@@ -408,13 +429,13 @@ export const checkActiveForTable = query({
 				continue;
 			}
 
-			const endTime = getReservationEndTime(
-				reservation.startTime,
-				reservation.durationHours,
-			);
 			if (
 				reservation.startTime <= args.referenceTimestamp &&
-				args.referenceTimestamp < endTime
+				args.referenceTimestamp <
+					getReservationEndTime(
+						reservation.startTime,
+						reservation.durationHours,
+					)
 			) {
 				const table = await getTableOrThrow(ctx, reservation.tableId);
 				return toReservationWithTable(table, reservation);
@@ -424,6 +445,67 @@ export const checkActiveForTable = query({
 		return null;
 	},
 });
+
+async function createPendingReservation(
+	ctx: MutationCtx,
+	args: {
+		durationHours: ReservationDurationHours;
+		eventId?: Id<"events">;
+		guestCount: number;
+		startTime: number;
+		tableId: Id<"tables">;
+		userId: Id<"users">;
+	},
+): Promise<{ confirmationCode: string; reservationId: Id<"reservations"> }> {
+	const table = await getTableOrThrow(ctx, args.tableId);
+
+	if (table.status === "inactive") {
+		throw new Error("Table is not available for reservation");
+	}
+
+	if (!Number.isInteger(args.guestCount) || args.guestCount < 1) {
+		throw new Error("Guest count must be at least 1");
+	}
+
+	if (args.guestCount > table.capacity) {
+		throw new Error("Guest count exceeds table capacity");
+	}
+
+	validateReservationWindow({
+		durationHours: args.durationHours,
+		referenceTimestamp: Date.now(),
+		startTime: args.startTime,
+	});
+
+	const available = await ensureAvailability(ctx, args);
+	if (!available) {
+		throw new Error("Table is not available for the selected time");
+	}
+
+	const confirmationCode = generateConfirmationCode();
+	const reservationId = await ctx.db.insert("reservations", {
+		confirmationCode,
+		createdAt: Date.now(),
+		durationHours: args.durationHours,
+		eventId: args.eventId,
+		guestCount: args.guestCount,
+		startTime: args.startTime,
+		status: "pending",
+		tableId: args.tableId,
+		userId: args.userId,
+	});
+
+	await ctx.scheduler.runAfter(
+		PENDING_EXPIRY_MS,
+		internal.reservations.expirePendingReservation,
+		{ reservationId },
+	);
+
+	return {
+		confirmationCode,
+		reservationId,
+	};
+}
 
 export const create = mutation({
 	args: {
@@ -436,48 +518,29 @@ export const create = mutation({
 	returns: reservationCreateResultValidator,
 	handler: async (ctx, args) => {
 		const user = await requireAuth(ctx);
-		const table = await getTableOrThrow(ctx, args.tableId);
-
-		if (table.status !== "available") {
-			throw new Error("Table is not currently available");
-		}
-
-		if (!Number.isInteger(args.guestCount) || args.guestCount < 1) {
-			throw new Error("Guest count must be at least 1");
-		}
-
-		if (args.guestCount > table.capacity) {
-			throw new Error("Guest count exceeds table capacity");
-		}
-
-		const available = await ensureAvailability(ctx, args);
-		if (!available) {
-			throw new Error("Table is not available for the selected time");
-		}
-
-		const confirmationCode = generateConfirmationCode();
-		const reservationId = await ctx.db.insert("reservations", {
-			confirmationCode,
-			createdAt: Date.now(),
-			durationHours: args.durationHours,
-			eventId: args.eventId,
-			guestCount: args.guestCount,
-			startTime: args.startTime,
-			status: "pending",
-			tableId: args.tableId,
+		return await createPendingReservation(ctx, {
+			...args,
+			durationHours: args.durationHours as ReservationDurationHours,
 			userId: user._id,
 		});
+	},
+});
 
-		await ctx.scheduler.runAfter(
-			PENDING_EXPIRY_MS,
-			internal.reservations.expirePendingReservation,
-			{ reservationId },
-		);
-
-		return {
-			confirmationCode,
-			reservationId,
-		};
+export const createPendingForCheckout = internalMutation({
+	args: {
+		durationHours: durationHoursValidator,
+		eventId: v.optional(v.id("events")),
+		guestCount: v.number(),
+		startTime: v.number(),
+		tableId: v.id("tables"),
+		userId: v.id("users"),
+	},
+	returns: reservationCreateResultValidator,
+	handler: async (ctx, args) => {
+		return await createPendingReservation(ctx, {
+			...args,
+			durationHours: args.durationHours as ReservationDurationHours,
+		});
 	},
 });
 
@@ -591,13 +654,12 @@ export const confirm = internalMutation({
 			throw new Error("Reservation not found");
 		}
 
-		const table = await getTableOrThrow(ctx, reservation.tableId);
-
-		if (reservation.status === "confirmed") {
-			return toReservationWithTable(table, reservation);
-		}
-
 		if (reservation.status !== "pending") {
+			if (reservation.status === "confirmed") {
+				const existingTable = await getTableOrThrow(ctx, reservation.tableId);
+				return toReservationWithTable(existingTable, reservation);
+			}
+
 			throw new Error("Reservation is not pending");
 		}
 
@@ -606,15 +668,11 @@ export const confirm = internalMutation({
 			status: "confirmed",
 		});
 
-		await ctx.db.patch(table._id, {
-			status: "booked",
-		});
-
 		const updatedReservation = await getReservationOrThrow(
 			ctx,
 			reservation._id,
 		);
-		const updatedTable = await getTableOrThrow(ctx, table._id);
-		return toReservationWithTable(updatedTable, updatedReservation);
+		const table = await getTableOrThrow(ctx, reservation.tableId);
+		return toReservationWithTable(table, updatedReservation);
 	},
 });

@@ -24,6 +24,24 @@ function formatRange(startTime: number, endTime: number): string {
 	})} – ${end.toLocaleTimeString("id-ID", { timeStyle: "short" })}`;
 }
 
+function toReservationDateParam(timestamp: number): string {
+	const parts = new Intl.DateTimeFormat("en-CA", {
+		day: "2-digit",
+		month: "2-digit",
+		timeZone: "Asia/Jakarta",
+		year: "numeric",
+	}).formatToParts(new Date(timestamp));
+	const year = parts.find((part) => part.type === "year")?.value;
+	const month = parts.find((part) => part.type === "month")?.value;
+	const day = parts.find((part) => part.type === "day")?.value;
+
+	if (!year || !month || !day) {
+		return "";
+	}
+
+	return `${year}-${month}-${day}`;
+}
+
 export default function EventDetailPage() {
 	const { id } = useParams();
 	const eventId = id as Id<"events"> | undefined;
@@ -54,6 +72,10 @@ export default function EventDetailPage() {
 	}
 
 	const externalUrl = event.externalUrl;
+	const reserveSearchParams = new URLSearchParams({
+		date: toReservationDateParam(event.startTime),
+		eventId: event._id,
+	});
 	const host =
 		externalUrl &&
 		(() => {
@@ -142,7 +164,7 @@ export default function EventDetailPage() {
 						<Button
 							variant="outline"
 							className="w-full"
-							render={<Link to="/reserve" />}
+							render={<Link to={`/reserve?${reserveSearchParams.toString()}`} />}
 						>
 							Reservasi meja
 						</Button>

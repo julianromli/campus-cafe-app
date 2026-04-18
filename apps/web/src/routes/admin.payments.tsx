@@ -101,6 +101,11 @@ export default function AdminPaymentsPage() {
 							`Status Mayar: ${out.apiStatus ?? "belum SUCCESS"}. Coba lagi nanti.`,
 						);
 						break;
+					case "ignored":
+						toast.warning(
+							"Pembayaran berhasil di Mayar, tetapi reservasi lokal sudah tidak pending. Periksa apakah perlu refund manual.",
+						);
+						break;
 					case "not_found_in_mayar":
 						toast.warning(
 							"Transaksi tidak ditemukan di daftar Mayar (halaman API). Periksa ref ID atau coba lagi.",

@@ -15,6 +15,7 @@ import type * as events from "../events.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
 import type * as lib_auth from "../lib/auth.js";
+import type * as lib_reservation_utils from "../lib/reservation_utils.js";
 import type * as menu from "../menu.js";
 import type * as notifications from "../notifications.js";
 import type * as orders from "../orders.js";
@@ -39,6 +40,7 @@ declare const fullApi: ApiFromModules<{
   healthCheck: typeof healthCheck;
   http: typeof http;
   "lib/auth": typeof lib_auth;
+  "lib/reservation_utils": typeof lib_reservation_utils;
   menu: typeof menu;
   notifications: typeof notifications;
   orders: typeof orders;

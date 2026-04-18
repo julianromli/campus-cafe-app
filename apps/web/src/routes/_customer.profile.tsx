@@ -1,5 +1,7 @@
 import { api } from "@campus-cafe/backend/convex/_generated/api";
 import type { Id } from "@campus-cafe/backend/convex/_generated/dataModel";
+import { Avatar, AvatarFallback, AvatarImage } from "@campus-cafe/ui/components/avatar";
+import { Badge } from "@campus-cafe/ui/components/badge";
 import { Button } from "@campus-cafe/ui/components/button";
 import {
 	Card,
@@ -19,6 +21,7 @@ import { Input } from "@campus-cafe/ui/components/input";
 import { Skeleton } from "@campus-cafe/ui/components/skeleton";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery } from "convex/react";
+import { Camera, Mail, User as UserIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import z from "zod";
@@ -93,237 +96,247 @@ export default function ProfilePage() {
 
 	if (user === undefined) {
 		return (
-			<div className="mx-auto grid max-w-2xl gap-6">
-				<Skeleton className="h-10 w-48" />
-				<Skeleton className="h-40 w-full" />
-				<Skeleton className="h-64 w-full" />
+			<div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+				<div className="flex flex-col gap-2">
+					<Skeleton className="h-10 w-48" />
+					<Skeleton className="h-5 w-64" />
+				</div>
+				<Skeleton className="h-[400px] w-full rounded-[2.5rem]" />
 			</div>
 		);
 	}
 
 	if (!user) {
 		return (
-			<Card>
-				<CardHeader>
-					<CardTitle>Profile</CardTitle>
-					<CardDescription>Sign in to manage your profile.</CardDescription>
-				</CardHeader>
-			</Card>
+			<div className="mx-auto w-full max-w-2xl">
+				<Card className="rounded-[2.5rem] border-none bg-muted/30 p-8 text-center shadow-none">
+					<div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-full bg-background">
+						<UserIcon className="size-8 text-muted-foreground" />
+					</div>
+					<CardTitle className="text-xl">Not signed in</CardTitle>
+					<CardDescription className="mt-2">
+						Please sign in to view and manage your profile.
+					</CardDescription>
+				</Card>
+			</div>
 		);
 	}
 
 	return (
-		<div className="mx-auto grid max-w-2xl gap-6">
-			<Card>
-				<CardHeader>
-					<CardTitle>Profile</CardTitle>
-					<CardDescription>
-						Update your display name, phone, and avatar.
-					</CardDescription>
-				</CardHeader>
-			</Card>
+		<div className="mx-auto flex w-full max-w-2xl flex-col gap-8 pb-8">
+			<div className="flex flex-col gap-1">
+				<h1 className="font-heading text-3xl font-semibold tracking-tight">
+					My Profile
+				</h1>
+				<p className="text-muted-foreground">
+					Manage your account settings
+				</p>
+			</div>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className="text-base">Account</CardTitle>
-					<CardDescription>
-						Email and role cannot be changed here.
-					</CardDescription>
-				</CardHeader>
-				<CardContent className="grid gap-3 text-sm">
-					<div>
-						<span className="font-medium text-foreground">Email</span>
-						<p className="text-muted-foreground">{user.email}</p>
-					</div>
-					<div>
-						<span className="font-medium text-foreground">Role</span>
-						<p>
-							<span className="inline-flex rounded-full border border-border bg-muted px-2 py-0.5 text-muted-foreground text-xs capitalize">
-								{getRoleLabel(user.role)}
-							</span>
-						</p>
-					</div>
-				</CardContent>
-			</Card>
+			<div className="flex flex-col gap-6">
+				{/* Avatar & Account Details Combined */}
+				<Card className="overflow-hidden rounded-[2rem] border-none bg-muted/30 shadow-none">
+					<CardContent className="p-6 sm:p-8">
+						<div className="flex flex-col gap-8 sm:flex-row sm:items-center">
+							<div className="relative group">
+								<Avatar className="size-28 border-4 border-background shadow-sm sm:size-32">
+									<AvatarImage src={user.avatarUrl || ""} />
+									<AvatarFallback className="bg-primary/10 text-3xl font-medium text-primary">
+										{getInitials(user.name)}
+									</AvatarFallback>
+								</Avatar>
+								<div 
+									className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
+									onClick={() => fileInputRef.current?.click()}
+								>
+									<Camera className="size-8 text-white" />
+								</div>
+								{/* Mobile upload button - visible without hover */}
+								<Button 
+									size="icon" 
+									className="absolute bottom-0 right-0 rounded-full border-4 border-background sm:hidden"
+									onClick={() => fileInputRef.current?.click()}
+									disabled={avatarPending}
+								>
+									<Camera className="size-4" />
+								</Button>
+							</div>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className="text-base">Avatar</CardTitle>
-					<CardDescription>Upload a square image (max 2 MB).</CardDescription>
-				</CardHeader>
-				<CardContent className="flex flex-col gap-4 sm:flex-row sm:items-center">
-					<div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted font-semibold text-lg text-muted-foreground">
-						{user.avatarUrl ? (
-							<img
-								alt=""
-								className="h-full w-full object-cover"
-								src={user.avatarUrl}
-							/>
-						) : (
-							getInitials(user.name)
-						)}
-					</div>
-					<div className="flex flex-wrap gap-2">
-						<input
-							ref={fileInputRef}
-							accept="image/*"
-							className="hidden"
-							type="file"
-							onChange={async (event) => {
-								const file = event.target.files?.[0];
-								event.target.value = "";
-								if (!file) {
-									return;
-								}
-								if (!file.type.startsWith("image/")) {
-									toast.error("Please choose an image file");
-									return;
-								}
-								if (file.size > MAX_AVATAR_BYTES) {
-									toast.error("Image must be 2 MB or smaller");
-									return;
-								}
+							<div className="flex flex-1 flex-col gap-2">
+								<div className="flex items-center gap-2">
+									<h2 className="text-2xl font-semibold tracking-tight">{user.name}</h2>
+									<Badge variant="secondary" className="bg-background font-medium text-xs capitalize">
+										{getRoleLabel(user.role)}
+									</Badge>
+								</div>
+								
+								<div className="flex items-center gap-2 text-muted-foreground">
+									<Mail className="size-4" />
+									<span>{user.email}</span>
+								</div>
 
-								setAvatarPending(true);
-								try {
-									const postUrl = await generateAvatarUploadUrl();
-									const uploadResponse = await fetch(postUrl, {
-										body: file,
-										headers: { "Content-Type": file.type },
-										method: "POST",
-									});
-									if (!uploadResponse.ok) {
-										throw new Error("Upload failed");
-									}
-									const json = (await uploadResponse.json()) as {
-										storageId?: string;
-									};
-									if (!json.storageId) {
-										throw new Error("Missing storage id from upload");
-									}
-									await updateProfile({
-										avatarStorageId: json.storageId as Id<"_storage">,
-									});
-									toast.success("Avatar updated");
-								} catch (error) {
-									toast.error(
-										error instanceof Error
-											? error.message
-											: "Failed to upload avatar",
-									);
-								} finally {
-									setAvatarPending(false);
-								}
+								<div className="mt-2 flex flex-wrap gap-2">
+									<input
+										ref={fileInputRef}
+										accept="image/*"
+										className="hidden"
+										type="file"
+										onChange={async (event) => {
+											const file = event.target.files?.[0];
+											event.target.value = "";
+											if (!file) return;
+											if (!file.type.startsWith("image/")) {
+												toast.error("Please choose an image file");
+												return;
+											}
+											if (file.size > MAX_AVATAR_BYTES) {
+												toast.error("Image must be 2 MB or smaller");
+												return;
+											}
+
+											setAvatarPending(true);
+											try {
+												const postUrl = await generateAvatarUploadUrl();
+												const uploadResponse = await fetch(postUrl, {
+													body: file,
+													headers: { "Content-Type": file.type },
+													method: "POST",
+												});
+												if (!uploadResponse.ok) throw new Error("Upload failed");
+												const json = (await uploadResponse.json()) as { storageId?: string };
+												if (!json.storageId) throw new Error("Missing storage id from upload");
+												
+												await updateProfile({
+													avatarStorageId: json.storageId as Id<"_storage">,
+												});
+												toast.success("Avatar updated");
+											} catch (error) {
+												toast.error(error instanceof Error ? error.message : "Failed to upload avatar");
+											} finally {
+												setAvatarPending(false);
+											}
+										}}
+									/>
+									<Button
+										disabled={avatarPending}
+										type="button"
+										variant="outline"
+										size="sm"
+										className="hidden rounded-full bg-background hover:bg-muted sm:flex"
+										onClick={() => fileInputRef.current?.click()}
+									>
+										{avatarPending ? "Uploading…" : "Change Photo"}
+									</Button>
+									{(user.avatarStorageId ?? user.avatarUrl) ? (
+										<Button
+											disabled={avatarPending}
+											type="button"
+											variant="ghost"
+											size="sm"
+											className="rounded-full text-destructive hover:bg-destructive/10"
+											onClick={async () => {
+												setAvatarPending(true);
+												try {
+													await updateProfile({ avatarStorageId: null });
+													toast.success("Avatar removed");
+												} catch (error) {
+													toast.error(error instanceof Error ? error.message : "Failed to remove avatar");
+												} finally {
+													setAvatarPending(false);
+												}
+											}}
+										>
+											Remove
+										</Button>
+									) : null}
+								</div>
+							</div>
+						</div>
+					</CardContent>
+				</Card>
+
+				{/* Personal Info Form */}
+				<Card className="rounded-[2rem] border-none bg-muted/30 shadow-none">
+					<CardHeader className="px-6 pb-2 pt-6 sm:px-8 sm:pt-8">
+						<CardTitle className="text-lg">Personal Information</CardTitle>
+						<CardDescription>Update your contact details</CardDescription>
+					</CardHeader>
+					<CardContent className="p-6 pt-0 sm:p-8 sm:pt-0">
+						<form
+							className="flex flex-col gap-6"
+							onSubmit={(e) => {
+								e.preventDefault();
+								e.stopPropagation();
+								void form.handleSubmit();
 							}}
-						/>
-						<Button
-							disabled={avatarPending}
-							type="button"
-							variant="outline"
-							onClick={() => fileInputRef.current?.click()}
 						>
-							{avatarPending ? "Uploading…" : "Upload"}
-						</Button>
-						{(user.avatarStorageId ?? user.avatarUrl) ? (
-							<Button
-								disabled={avatarPending}
-								type="button"
-								variant="ghost"
-								onClick={async () => {
-									setAvatarPending(true);
-									try {
-										await updateProfile({ avatarStorageId: null });
-										toast.success("Avatar removed");
-									} catch (error) {
-										toast.error(
-											error instanceof Error
-												? error.message
-												: "Failed to remove avatar",
+							<FieldGroup className="gap-5">
+								<form.Field name="name">
+									{(field) => {
+										const invalid = field.state.meta.errors.length > 0;
+										return (
+											<Field data-invalid={invalid || undefined}>
+												<FieldLabel htmlFor={field.name}>Display Name</FieldLabel>
+												<FieldContent>
+													<Input
+														className="h-12 rounded-xl bg-background"
+														defaultValue={user.name}
+														id={field.name}
+														name={field.name}
+														value={field.state.value}
+														aria-invalid={invalid}
+														onBlur={field.handleBlur}
+														onChange={(e) => field.handleChange(e.target.value)}
+													/>
+													<FieldError errors={field.state.meta.errors} />
+												</FieldContent>
+											</Field>
 										);
-									} finally {
-										setAvatarPending(false);
-									}
-								}}
-							>
-								Remove
-							</Button>
-						) : null}
-					</div>
-				</CardContent>
-			</Card>
+									}}
+								</form.Field>
 
-			<Card>
-				<CardHeader>
-					<CardTitle className="text-base">Details</CardTitle>
-				</CardHeader>
-				<CardContent className="flex flex-col gap-4">
-					<form
-						className="contents"
-						onSubmit={(e) => {
-							e.preventDefault();
-							e.stopPropagation();
-							void form.handleSubmit();
-						}}
-					>
-						<FieldGroup className="gap-4">
-							<form.Field name="name">
-								{(field) => {
-									const invalid = field.state.meta.errors.length > 0;
-									return (
-										<Field data-invalid={invalid || undefined}>
-											<FieldLabel htmlFor={field.name}>Display name</FieldLabel>
+								<form.Field name="phone">
+									{(field) => (
+										<Field>
+											<FieldLabel htmlFor={field.name}>Phone Number</FieldLabel>
 											<FieldContent>
 												<Input
-													defaultValue={user.name}
+													className="h-12 rounded-xl bg-background"
 													id={field.name}
 													name={field.name}
+													placeholder="+62 812 3456 7890"
+													type="tel"
 													value={field.state.value}
-													aria-invalid={invalid}
 													onBlur={field.handleBlur}
 													onChange={(e) => field.handleChange(e.target.value)}
 												/>
-												<FieldError errors={field.state.meta.errors} />
 											</FieldContent>
 										</Field>
-									);
-								}}
-							</form.Field>
+									)}
+								</form.Field>
+							</FieldGroup>
 
-							<form.Field name="phone">
-								{(field) => (
-									<Field>
-										<FieldLabel htmlFor={field.name}>Phone</FieldLabel>
-										<FieldContent>
-											<Input
-												id={field.name}
-												name={field.name}
-												placeholder="Optional"
-												type="tel"
-												value={field.state.value}
-												onBlur={field.handleBlur}
-												onChange={(e) => field.handleChange(e.target.value)}
-											/>
-										</FieldContent>
-									</Field>
+							<form.Subscribe
+								selector={(state) => ({
+									canSubmit: state.canSubmit,
+									isSubmitting: state.isSubmitting,
+								})}
+							>
+								{({ canSubmit, isSubmitting }) => (
+									<Button 
+										disabled={!canSubmit || isSubmitting} 
+										type="submit"
+										size="lg"
+										className="w-full self-end rounded-xl sm:w-auto"
+									>
+										{isSubmitting ? "Saving changes…" : "Save changes"}
+									</Button>
 								)}
-							</form.Field>
-						</FieldGroup>
-
-						<form.Subscribe
-							selector={(state) => ({
-								canSubmit: state.canSubmit,
-								isSubmitting: state.isSubmitting,
-							})}
-						>
-							{({ canSubmit, isSubmitting }) => (
-								<Button disabled={!canSubmit || isSubmitting} type="submit">
-									{isSubmitting ? "Saving…" : "Save changes"}
-								</Button>
-							)}
-						</form.Subscribe>
-					</form>
-				</CardContent>
-			</Card>
+							</form.Subscribe>
+						</form>
+					</CardContent>
+				</Card>
+			</div>
 		</div>
 	);
 }

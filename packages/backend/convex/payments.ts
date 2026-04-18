@@ -8,8 +8,16 @@ import {
 	internalMutation,
 	internalQuery,
 	query,
+	type ActionCtx,
 } from "./_generated/server";
+import { PENDING_EXPIRY_MS } from "./lib/reservation_utils";
 import { requireRole } from "./lib/auth";
+
+const durationHoursValidator = v.union(
+	v.literal(1),
+	v.literal(2),
+	v.literal(3),
+);
 
 const paymentTypeValidator = v.union(
 	v.literal("reservation"),
@@ -27,8 +35,10 @@ const paymentValidator = v.object({
 	_creationTime: v.number(),
 	_id: v.id("payments"),
 	amount: v.number(),
+	checkoutUrl: v.optional(v.string()),
 	createdAt: v.number(),
 	currency: v.literal("IDR"),
+	expiresAt: v.optional(v.number()),
 	refId: v.string(),
 	status: paymentStatusValidator,
 	targetId: v.string(),
@@ -37,6 +47,35 @@ const paymentValidator = v.object({
 
 const paymentLinkResultValidator = v.object({
 	paymentUrl: v.string(),
+	reservationId: v.id("reservations"),
+});
+
+const pendingPaymentLinkValidator = v.object({
+	checkoutUrl: v.string(),
+	expiresAt: v.number(),
+	refId: v.string(),
+});
+
+const pendingReservationCheckoutValidator = v.object({
+	activePayment: v.union(pendingPaymentLinkValidator, v.null()),
+	reservation: v.object({
+		confirmationCode: v.optional(v.string()),
+		durationHours: durationHoursValidator,
+		guestCount: v.number(),
+		reservationId: v.id("reservations"),
+		startTime: v.number(),
+		userId: v.id("users"),
+	}),
+});
+
+const startReservationCheckoutArgsValidator = v.object({
+	durationHours: v.optional(durationHoursValidator),
+	eventId: v.optional(v.id("events")),
+	guestCount: v.optional(v.number()),
+	mode: v.union(v.literal("new"), v.literal("resume")),
+	reservationId: v.optional(v.id("reservations")),
+	startTime: v.optional(v.number()),
+	tableId: v.optional(v.id("tables")),
 });
 
 const mayarResponseValidator = v.object({
@@ -227,69 +266,193 @@ function parseWebhookPayload(body: unknown): {
 	};
 }
 
+type CheckoutUser = {
+	_id: Id<"users">;
+	email: string;
+	name: string;
+	phone?: string;
+};
+
+async function createMayarReservationPayment(args: {
+	confirmationCode?: string;
+	durationHours: 1 | 2 | 3;
+	reservationId: Id<"reservations">;
+	user: CheckoutUser & { phone: string };
+}): Promise<{
+	amount: number;
+	expiresAt: number;
+	transactionId: string;
+	url: string;
+}> {
+	const amount = getReservationPricePerHour() * args.durationHours;
+	const expiresAt = Date.now() + PENDING_EXPIRY_MS;
+	const response = await fetch(MAYAR_CREATE_PAYMENT_URL, {
+		body: JSON.stringify({
+			amount,
+			description: `Campus Cafe reservation ${args.confirmationCode ?? args.reservationId}`,
+			email: args.user.email,
+			expiredAt: new Date(expiresAt).toISOString(),
+			mobile: args.user.phone,
+			name: args.user.name,
+			redirectUrl: `${getSiteUrl()}/my-reservations?success=true`,
+		}),
+		headers: {
+			Authorization: `Bearer ${getMayarApiKey()}`,
+			"Content-Type": "application/json",
+		},
+		method: "POST",
+	});
+
+	if (!response.ok) {
+		const responseText = await response.text();
+		throw new Error(
+			`Mayar payment creation failed: ${responseText || response.statusText}`,
+		);
+	}
+
+	const parsedResponse = parseMayarCreateResponse(await response.json());
+	return {
+		amount,
+		expiresAt,
+		transactionId: parsedResponse.transactionId,
+		url: parsedResponse.url,
+	};
+}
+
+async function getUserForReservationCheckout(
+	ctx: ActionCtx,
+): Promise<CheckoutUser> {
+	const user = await ctx.runQuery(api.users.getMe, {});
+	if (!user) {
+		throw new Error("Unauthenticated");
+	}
+
+	return user;
+}
+
+async function ensureReservationCheckoutLink(
+	ctx: ActionCtx,
+	args: {
+		reservationId: Id<"reservations">;
+		user: CheckoutUser;
+	},
+): Promise<{ paymentUrl: string; reservationId: Id<"reservations"> }> {
+	const checkout = await ctx.runQuery(
+		internal.payments.getPendingReservationCheckout,
+		{
+			referenceTimestamp: Date.now(),
+			reservationId: args.reservationId,
+			userId: args.user._id,
+		},
+	);
+	if (!checkout) {
+		throw new Error("Pending reservation not found");
+	}
+
+	if (checkout.activePayment) {
+		return {
+			paymentUrl: checkout.activePayment.checkoutUrl,
+			reservationId: checkout.reservation.reservationId,
+		};
+	}
+
+	if (!args.user.phone) {
+		throw new Error("Add a phone number to your profile before continuing");
+	}
+
+	const payment = await createMayarReservationPayment({
+		confirmationCode: checkout.reservation.confirmationCode,
+		durationHours: checkout.reservation.durationHours,
+		reservationId: checkout.reservation.reservationId,
+		user: {
+			...args.user,
+			phone: args.user.phone,
+		},
+	});
+
+	await ctx.runMutation(internal.payments.recordPendingReservationPayment, {
+		amount: payment.amount,
+		checkoutUrl: payment.url,
+		expiresAt: payment.expiresAt,
+		refId: payment.transactionId,
+		reservationId: checkout.reservation.reservationId,
+	});
+
+	return {
+		paymentUrl: payment.url,
+		reservationId: checkout.reservation.reservationId,
+	};
+}
+
 export const createReservationPaymentLink = action({
 	args: {
 		reservationId: v.id("reservations"),
 	},
 	returns: paymentLinkResultValidator,
 	handler: async (ctx, args) => {
-		const user = await ctx.runQuery(api.users.getMe, {});
-		if (!user) {
-			throw new Error("Unauthenticated");
-		}
+		const user = await getUserForReservationCheckout(ctx);
+		return await ensureReservationCheckoutLink(ctx, {
+			reservationId: args.reservationId,
+			user,
+		});
+	},
+});
 
-		if (!user.phone) {
-			throw new Error("Add a phone number to your profile before continuing");
-		}
+export const startReservationCheckout = action({
+	args: startReservationCheckoutArgsValidator,
+	returns: paymentLinkResultValidator,
+	handler: async (
+		ctx,
+		args,
+	): Promise<{ paymentUrl: string; reservationId: Id<"reservations"> }> => {
+		const user = await getUserForReservationCheckout(ctx);
 
-		const reservation = await ctx.runQuery(
-			internal.reservations.getPendingForPayment,
-			{
+		if (args.mode === "resume") {
+			if (!args.reservationId) {
+				throw new Error("Reservation is required to resume checkout");
+			}
+
+			return await ensureReservationCheckoutLink(ctx, {
 				reservationId: args.reservationId,
+				user,
+			});
+		}
+
+		if (
+			args.durationHours === undefined ||
+			args.guestCount === undefined ||
+			args.startTime === undefined ||
+			args.tableId === undefined
+		) {
+			throw new Error("Reservation details are incomplete");
+		}
+
+		const reservation: {
+			confirmationCode: string;
+			reservationId: Id<"reservations">;
+		} = await ctx.runMutation(
+			internal.reservations.createPendingForCheckout,
+			{
+				durationHours: args.durationHours,
+				eventId: args.eventId,
+				guestCount: args.guestCount,
+				startTime: args.startTime,
+				tableId: args.tableId,
 				userId: user._id,
 			},
 		);
 
-		if (!reservation) {
-			throw new Error("Pending reservation not found");
+		try {
+			return await ensureReservationCheckoutLink(ctx, {
+				reservationId: reservation.reservationId,
+				user,
+			});
+		} catch (error) {
+			await ctx.runMutation(internal.reservations.expirePendingReservation, {
+				reservationId: reservation.reservationId,
+			});
+			throw error;
 		}
-
-		const amount = getReservationPricePerHour() * reservation.durationHours;
-		const response = await fetch(MAYAR_CREATE_PAYMENT_URL, {
-			body: JSON.stringify({
-				amount,
-				description: `Campus Cafe reservation ${reservation.confirmationCode ?? reservation.reservationId}`,
-				email: user.email,
-				expiredAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-				mobile: user.phone,
-				name: user.name,
-				redirectUrl: `${getSiteUrl()}/my-reservations?success=true`,
-			}),
-			headers: {
-				Authorization: `Bearer ${getMayarApiKey()}`,
-				"Content-Type": "application/json",
-			},
-			method: "POST",
-		});
-
-		if (!response.ok) {
-			const responseText = await response.text();
-			throw new Error(
-				`Mayar payment creation failed: ${responseText || response.statusText}`,
-			);
-		}
-
-		const parsedResponse = parseMayarCreateResponse(await response.json());
-
-		await ctx.runMutation(internal.payments.recordPendingReservationPayment, {
-			amount,
-			refId: parsedResponse.transactionId,
-			reservationId: reservation.reservationId,
-		});
-
-		return {
-			paymentUrl: parsedResponse.url,
-		};
 	},
 });
 
@@ -306,18 +469,96 @@ export const getByRefId = internalQuery({
 	},
 });
 
+export const getPendingReservationCheckout = internalQuery({
+	args: {
+		referenceTimestamp: v.number(),
+		reservationId: v.id("reservations"),
+		userId: v.id("users"),
+	},
+	returns: v.union(pendingReservationCheckoutValidator, v.null()),
+	handler: async (ctx, args) => {
+		const reservation = await ctx.db.get(args.reservationId);
+		if (
+			!reservation ||
+			reservation.userId !== args.userId ||
+			reservation.status !== "pending"
+		) {
+			return null;
+		}
+
+		const payments = await ctx.db
+			.query("payments")
+			.withIndex("by_targetId", (query) =>
+				query.eq("targetId", reservation._id),
+			)
+			.collect();
+		const activePayment =
+			payments
+				.filter(
+					(payment) =>
+						payment.type === "reservation" &&
+						payment.status === "pending" &&
+						typeof payment.checkoutUrl === "string" &&
+						typeof payment.expiresAt === "number" &&
+						payment.expiresAt > args.referenceTimestamp,
+				)
+				.sort((left, right) => right.createdAt - left.createdAt)[0] ?? null;
+
+		return {
+			activePayment: activePayment
+				? {
+						checkoutUrl: activePayment.checkoutUrl!,
+						expiresAt: activePayment.expiresAt!,
+						refId: activePayment.refId,
+					}
+				: null,
+			reservation: {
+				confirmationCode: reservation.confirmationCode,
+				durationHours: reservation.durationHours,
+				guestCount: reservation.guestCount,
+				reservationId: reservation._id,
+				startTime: reservation.startTime,
+				userId: reservation.userId,
+			},
+		};
+	},
+});
+
 export const recordPendingReservationPayment = internalMutation({
 	args: {
 		amount: v.number(),
+		checkoutUrl: v.string(),
+		expiresAt: v.number(),
 		refId: v.string(),
 		reservationId: v.id("reservations"),
 	},
 	returns: paymentValidator,
 	handler: async (ctx, args) => {
+		const existingPayments = await ctx.db
+			.query("payments")
+			.withIndex("by_targetId", (query) =>
+				query.eq("targetId", args.reservationId),
+			)
+			.collect();
+
+		for (const payment of existingPayments) {
+			if (
+				payment.type === "reservation" &&
+				payment.status === "pending" &&
+				payment.refId !== args.refId
+			) {
+				await ctx.db.patch(payment._id, {
+					status: "failed",
+				});
+			}
+		}
+
 		const id = await ctx.db.insert("payments", {
 			amount: args.amount,
+			checkoutUrl: args.checkoutUrl,
 			createdAt: Date.now(),
 			currency: "IDR",
+			expiresAt: args.expiresAt,
 			refId: args.refId,
 			status: "pending",
 			targetId: args.reservationId,
@@ -365,6 +606,7 @@ export const markPaid = internalMutation({
 const applyResultValidator = v.union(
 	v.literal("applied"),
 	v.literal("already_paid"),
+	v.literal("ignored"),
 	v.literal("not_found"),
 );
 
@@ -388,11 +630,27 @@ export const applyReservationPaymentSuccess = internalMutation({
 			return "already_paid";
 		}
 
+		if (payment.status !== "pending") {
+			return "ignored";
+		}
+
 		if (payment.type === "reservation") {
-			await ctx.runMutation(internal.reservations.confirm, {
-				paymentRef: args.refId,
-				reservationId: payment.targetId as Id<"reservations">,
-			});
+			try {
+				await ctx.runMutation(internal.reservations.confirm, {
+					paymentRef: args.refId,
+					reservationId: payment.targetId as Id<"reservations">,
+				});
+			} catch (error) {
+				if (
+					error instanceof Error &&
+					(error.message === "Reservation is not pending" ||
+						error.message === "Reservation not found")
+				) {
+					return "ignored";
+				}
+
+				throw error;
+			}
 		}
 
 		await ctx.runMutation(internal.payments.markPaid, {
@@ -440,6 +698,10 @@ export const mayarWebhook = httpAction(async (ctx, request) => {
 		return jsonResponse({ message: "Already processed" });
 	}
 
+	if (result === "ignored") {
+		return jsonResponse({ message: "Ignored" });
+	}
+
 	return jsonResponse({ message: "Webhook received successfully" });
 });
 
@@ -451,10 +713,12 @@ const paymentListRowValidator = v.object({
 	_creationTime: v.number(),
 	_id: v.id("payments"),
 	amount: v.number(),
+	checkoutUrl: v.optional(v.string()),
 	createdAt: v.number(),
 	currency: v.literal("IDR"),
 	customerEmail: v.optional(v.string()),
 	customerName: v.optional(v.string()),
+	expiresAt: v.optional(v.number()),
 	refId: v.string(),
 	status: paymentStatusValidator,
 	tableLabel: v.optional(v.string()),
@@ -581,6 +845,7 @@ export const syncReservationPaymentStatus = action({
 	returns: v.object({
 		apiStatus: v.optional(v.string()),
 		result: v.union(
+			v.literal("ignored"),
 			v.literal("paid"),
 			v.literal("pending"),
 			v.literal("not_found_in_mayar"),
@@ -594,6 +859,7 @@ export const syncReservationPaymentStatus = action({
 	): Promise<{
 		apiStatus?: string;
 		result:
+			| "ignored"
 			| "not_found_in_mayar"
 			| "not_pending_locally"
 			| "paid"
@@ -693,6 +959,10 @@ export const syncReservationPaymentStatus = action({
 
 		if (applyResult === "already_paid" || applyResult === "applied") {
 			return { apiStatus: "SUCCESS", result: "paid" as const };
+		}
+
+		if (applyResult === "ignored") {
+			return { apiStatus: "SUCCESS", result: "ignored" as const };
 		}
 
 		return { apiStatus: matched.status, result: "pending" as const };

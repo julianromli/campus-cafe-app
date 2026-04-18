@@ -37,9 +37,12 @@ export default function UserMenu() {
 		<DropdownMenu>
 			<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="rounded-full" />}>
 				<Avatar className="size-9">
-					<AvatarImage src={user?.image || ""} alt={user?.name || "User avatar"} />
+					<AvatarImage
+						src={user.avatarUrl || ""}
+						alt={user.name || "User avatar"}
+					/>
 					<AvatarFallback className="bg-primary/10 text-primary font-medium">
-						{getInitials(user?.name)}
+						{getInitials(user.name)}
 					</AvatarFallback>
 				</Avatar>
 			</DropdownMenuTrigger>

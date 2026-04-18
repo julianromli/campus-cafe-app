@@ -4,10 +4,12 @@ import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { mutation, query } from "./_generated/server";
 import { requireAuth, requireRole } from "./lib/auth";
+import {
+	getReservationSearchWindowStart,
+	isReservationActiveAt,
+} from "./lib/reservation_utils";
 
 type DbCtx = QueryCtx | MutationCtx;
-
-const HOUR_MS = 60 * 60 * 1000;
 
 const orderStatusValidator = v.union(
 	v.literal("pending"),
@@ -65,13 +67,6 @@ const orderCreateResultValidator = v.object({
 type AppReservation = Doc<"reservations">;
 type AppTable = Doc<"tables">;
 
-function getReservationEndTime(
-	startTime: number,
-	durationHours: 1 | 2 | 3,
-): number {
-	return startTime + durationHours * HOUR_MS;
-}
-
 async function findActiveReservationForUser(
 	ctx: MutationCtx,
 	userId: Id<"users">,
@@ -80,7 +75,12 @@ async function findActiveReservationForUser(
 ): Promise<AppReservation | null> {
 	const reservations = await ctx.db
 		.query("reservations")
-		.withIndex("by_userId", (query) => query.eq("userId", userId))
+		.withIndex("by_userId_startTime", (query) =>
+			query
+				.eq("userId", userId)
+				.gte("startTime", getReservationSearchWindowStart(referenceTimestamp))
+				.lte("startTime", referenceTimestamp),
+		)
 		.collect();
 
 	for (const reservation of reservations) {
@@ -88,14 +88,7 @@ async function findActiveReservationForUser(
 			continue;
 		}
 
-		const endTime = getReservationEndTime(
-			reservation.startTime,
-			reservation.durationHours,
-		);
-		if (
-			reservation.startTime <= referenceTimestamp &&
-			referenceTimestamp < endTime
-		) {
+		if (isReservationActiveAt(reservation, referenceTimestamp)) {
 			return reservation;
 		}
 	}

@@ -6,7 +6,8 @@
 	"author": "",
 	"scripts": {
 		"dev": "convex dev",
-		"dev:setup": "convex dev --configure --until-success"
+		"dev:setup": "convex dev --configure --until-success",
+		"test": "vitest run"
 	},
 	"dependencies": {
 		"@convex-dev/better-auth": "catalog:",
@@ -20,7 +21,10 @@
 	},
 	"devDependencies": {
 		"@campus-cafe/config": "workspace:*",
+		"@edge-runtime/vm": "^5.0.0",
 		"@types/node": "^24.3.0",
-		"typescript": "^5"
+		"convex-test": "^0.0.49",
+		"typescript": "^5",
+		"vitest": "^4.1.4"
 	}
 }

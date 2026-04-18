@@ -21,6 +21,26 @@ import { TableSkeleton } from "@/components/skeletons/table-skeleton";
 type StaffView = "floor" | "list";
 type StatusFilter = "all" | "pending" | "confirmed" | "cancelled";
 
+function getReservationEndTime(timestamp: number, durationHours: 1 | 2 | 3) {
+	return timestamp + durationHours * 60 * 60 * 1000;
+}
+
+function isReservationActiveNow(
+	reservation: {
+		durationHours: 1 | 2 | 3;
+		startTime: number;
+		status: "pending" | "confirmed" | "cancelled";
+	},
+	referenceTimestamp: number,
+) {
+	return (
+		reservation.status === "confirmed" &&
+		reservation.startTime <= referenceTimestamp &&
+		referenceTimestamp <
+			getReservationEndTime(reservation.startTime, reservation.durationHours)
+	);
+}
+
 function toDateInputValue(date: Date): string {
 	const timezoneOffset = date.getTimezoneOffset() * 60 * 1000;
 	return new Date(date.getTime() - timezoneOffset).toISOString().slice(0, 10);
@@ -56,11 +76,7 @@ function getStatusLabel(status: "pending" | "confirmed" | "cancelled") {
 }
 
 export default function StaffReservationsPage() {
-	const referenceStartTimestamp = useMemo(() => {
-		const today = new Date();
-		today.setHours(0, 0, 0, 0);
-		return today.getTime();
-	}, []);
+	const [referenceTimestamp] = useState(() => Date.now());
 
 	const [activeView, setActiveView] = useState<StaffView>("floor");
 	const [dateFilter, setDateFilter] = useState("");
@@ -76,10 +92,10 @@ export default function StaffReservationsPage() {
 		FloorPlanTable["_id"] | null
 	>(null);
 
-	const tables = useQuery(api.tables.list);
+	const tables = useQuery(api.tables.list, { referenceTimestamp });
 	const reservations = useQuery(api.reservations.listForBoard, {
 		...(dateFilter ? { date: dateFilter } : {}),
-		referenceStartTimestamp,
+		referenceTimestamp,
 	});
 	const markOccupied = useMutation(api.tables.markOccupied);
 	const releaseTable = useMutation(api.tables.release);
@@ -108,14 +124,29 @@ export default function StaffReservationsPage() {
 			return null;
 		}
 
-		return (
-			reservations?.find(
-				(reservation) =>
-					reservation.tableId === selectedTableId &&
-					reservation.status !== "cancelled",
-			) ?? null
+		const tableReservations = (reservations ?? []).filter(
+			(reservation) =>
+				reservation.tableId === selectedTableId &&
+				reservation.status !== "cancelled",
 		);
-	}, [reservations, selectedTableId]);
+		if (tableReservations.length === 0) {
+			return null;
+		}
+
+		const activeReservation =
+			tableReservations.find((reservation) =>
+				isReservationActiveNow(reservation, referenceTimestamp),
+			) ?? null;
+		if (activeReservation) {
+			return activeReservation;
+		}
+
+		const upcomingReservation =
+			tableReservations.find(
+				(reservation) => reservation.startTime >= referenceTimestamp,
+			) ?? null;
+		return upcomingReservation ?? tableReservations[tableReservations.length - 1] ?? null;
+	}, [referenceTimestamp, reservations, selectedTableId]);
 
 	const handleMarkOccupied = async (tableId: FloorPlanTable["_id"]) => {
 		setPendingTableActionId(tableId);
@@ -137,7 +168,7 @@ export default function StaffReservationsPage() {
 		setPendingTableActionId(tableId);
 		try {
 			await releaseTable({ id: tableId });
-			toast.success("Table released to available");
+			toast.success("Table released");
 			setReleaseTableId(null);
 		} catch (error) {
 			toast.error(
@@ -338,7 +369,11 @@ export default function StaffReservationsPage() {
 															>
 																View
 															</Button>
-															{reservation.table.status === "booked" ? (
+															{isReservationActiveNow(
+																reservation,
+																referenceTimestamp,
+															) &&
+															reservation.table.status !== "occupied" ? (
 																<Button
 																	disabled={
 																		pendingTableActionId === reservation.tableId
@@ -352,8 +387,12 @@ export default function StaffReservationsPage() {
 																	Mark occupied
 																</Button>
 															) : null}
-															{reservation.table.status === "booked" ||
-															reservation.table.status === "occupied" ? (
+															{reservation.table.status === "occupied" ||
+															(isReservationActiveNow(
+																reservation,
+																referenceTimestamp,
+															) &&
+																reservation.table.status === "booked") ? (
 																<Button
 																	disabled={
 																		pendingTableActionId === reservation.tableId
@@ -400,9 +439,28 @@ export default function StaffReservationsPage() {
 										? "Updating..."
 										: "Mark occupied"}
 								</Button>
+							) : selectedReservation &&
+							  isReservationActiveNow(
+									selectedReservation,
+									referenceTimestamp,
+								) &&
+							  selectedTable.status !== "occupied" ? (
+								<Button
+									disabled={pendingTableActionId === selectedTable._id}
+									onClick={() => void handleMarkOccupied(selectedTable._id)}
+								>
+									{pendingTableActionId === selectedTable._id
+										? "Updating..."
+										: "Mark occupied"}
+								</Button>
 							) : null}
-							{selectedTable.status === "booked" ||
-							selectedTable.status === "occupied" ? (
+							{selectedTable.status === "occupied" ||
+							(selectedReservation &&
+								isReservationActiveNow(
+									selectedReservation,
+									referenceTimestamp,
+								) &&
+								selectedTable.status === "booked") ? (
 								<Button
 									disabled={pendingTableActionId === selectedTable._id}
 									variant="outline"

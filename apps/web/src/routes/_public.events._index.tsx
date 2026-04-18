@@ -7,6 +7,7 @@ import {
 	EmptyTitle,
 } from "@campus-cafe/ui/components/empty";
 import { useQuery } from "convex/react";
+import { CalendarRange, ChevronLeft } from "lucide-react";
 import { useMemo } from "react";
 import { Link } from "react-router";
 
@@ -19,65 +20,64 @@ export default function EventsListPage() {
 		referenceTimestamp,
 	});
 
-	if (events === undefined) {
-		return (
-			<div className="flex flex-col gap-4">
-				<p className="text-muted-foreground text-sm">Memuat event…</p>
-				<EventListSkeleton count={6} />
-			</div>
-		);
-	}
-
-	if (events.length === 0) {
-		return (
-			<Empty className="mx-auto min-h-[40vh] max-w-lg border border-dashed">
-				<EmptyHeader>
-					<EmptyTitle>Event mendatang</EmptyTitle>
-					<EmptyDescription>
-						Belum ada event yang dipublikasikan. Cek lagi nanti atau reservasi
-						meja untuk kunjunganmu.
-					</EmptyDescription>
-				</EmptyHeader>
-				<Button render={<Link to="/reserve" />}>Reservasi meja</Button>
-			</Empty>
-		);
-	}
-
 	return (
-		<div className="flex flex-col gap-8">
-			<div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-				<div>
-					<h1 className="font-heading font-semibold text-2xl tracking-tight">
-						Event mendatang
+		<div className="flex flex-col gap-6 sm:gap-8 pb-8">
+			<div className="flex items-center justify-between">
+				<div className="flex flex-col gap-1">
+					<h1 className="font-heading text-3xl font-semibold tracking-tight">
+						Campus Events
 					</h1>
 					<p className="text-muted-foreground text-sm">
-						Informasi event di cafe. Untuk pendaftaran atau tiket, buka halaman
-						resmi penyelenggara.
+						Discover what's happening around you
 					</p>
 				</div>
-				<Button variant="outline" render={<Link to="/" />}>
-					← Beranda
+				<Button variant="ghost" size="icon" className="shrink-0 sm:hidden" render={<Link to="/" />}>
+					<ChevronLeft className="size-5" />
+				</Button>
+				<Button variant="outline" className="hidden sm:flex" render={<Link to="/" />}>
+					<ChevronLeft className="mr-2 size-4" />
+					Back to Home
 				</Button>
 			</div>
 
-			<div className="flex flex-wrap gap-4">
-				{events.map((event) => (
-					<EventCard
-						key={event._id}
-						event={{
-							_id: event._id,
-							category: event.category,
-							coverImage: event.coverImage,
-							endTime: event.endTime,
-							isOngoing:
-								event.startTime <= referenceTimestamp &&
-								event.endTime >= referenceTimestamp,
-							startTime: event.startTime,
-							title: event.title,
-						}}
-					/>
-				))}
-			</div>
+			{events === undefined ? (
+				<EventListSkeleton count={6} />
+			) : events.length === 0 ? (
+				<Empty className="rounded-[2.5rem] border-none bg-muted/30 p-12 mt-4">
+					<EmptyHeader>
+						<div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-background shadow-sm">
+							<CalendarRange className="size-8 text-muted-foreground" />
+						</div>
+						<EmptyTitle className="text-xl">No events scheduled</EmptyTitle>
+						<EmptyDescription className="max-w-xs text-balance">
+							Our calendar is currently clear. Check back soon for new
+							workshops, talks, and community gatherings.
+						</EmptyDescription>
+					</EmptyHeader>
+					<Button className="mt-6 rounded-xl" render={<Link to="/reserve" />}>
+						Reserve a table instead
+					</Button>
+				</Empty>
+			) : (
+				<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+					{events.map((event) => (
+						<EventCard
+							key={event._id}
+							event={{
+								_id: event._id,
+								category: event.category,
+								coverImage: event.coverImage,
+								endTime: event.endTime,
+								isOngoing:
+									event.startTime <= referenceTimestamp &&
+									event.endTime >= referenceTimestamp,
+								startTime: event.startTime,
+								title: event.title,
+							}}
+						/>
+					))}
+				</div>
+			)}
 		</div>
 	);
 }

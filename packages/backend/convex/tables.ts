@@ -2,6 +2,12 @@ import { v } from "convex/values";
 
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import {
+	applyOperationalTableStatus,
+	getActiveConfirmedTableIds,
+	getReservationSearchWindowStart,
+	isReservationActiveAt,
+} from "./lib/reservation_utils";
 import { requireRole } from "./lib/auth";
 
 const tableStatusValidator = v.union(
@@ -101,10 +107,13 @@ function buildTablePatch(args: {
 }
 
 export const list = query({
-	args: {},
+	args: {
+		referenceTimestamp: v.number(),
+	},
 	returns: v.array(tableValidator),
-	handler: async (ctx) => {
-		const [availableTables, bookedTables, occupiedTables] = await Promise.all([
+	handler: async (ctx, args) => {
+		const [availableTables, bookedTables, occupiedTables, activeBookedTableIds] =
+			await Promise.all([
 			ctx.db
 				.query("tables")
 				.withIndex("by_status", (query) => query.eq("status", "available"))
@@ -117,9 +126,14 @@ export const list = query({
 				.query("tables")
 				.withIndex("by_status", (query) => query.eq("status", "occupied"))
 				.collect(),
+			getActiveConfirmedTableIds(ctx, args.referenceTimestamp),
 		]);
 
-		return sortTables([...availableTables, ...bookedTables, ...occupiedTables]);
+		return sortTables(
+			[...availableTables, ...bookedTables, ...occupiedTables].map((table) =>
+				applyOperationalTableStatus(table, activeBookedTableIds),
+			),
+		);
 	},
 });
 
@@ -135,10 +149,20 @@ export const listAll = query({
 export const getById = query({
 	args: {
 		id: v.id("tables"),
+		referenceTimestamp: v.optional(v.number()),
 	},
 	returns: v.union(tableValidator, v.null()),
 	handler: async (ctx, args) => {
-		return await ctx.db.get(args.id);
+		const table = await ctx.db.get(args.id);
+		if (!table || args.referenceTimestamp === undefined) {
+			return table;
+		}
+
+		const activeBookedTableIds = await getActiveConfirmedTableIds(
+			ctx,
+			args.referenceTimestamp,
+		);
+		return applyOperationalTableStatus(table, activeBookedTableIds);
 	},
 });
 
@@ -214,6 +238,10 @@ export const setStatus = mutation({
 	handler: async (ctx, args) => {
 		await requireRole(ctx, "admin");
 
+		if (args.status === "booked") {
+			throw new Error("Booked status is managed automatically from reservations");
+		}
+
 		const table = await ctx.db.get(args.id);
 		if (!table) {
 			throw new Error("Table not found");
@@ -245,8 +273,34 @@ export const markOccupied = mutation({
 			throw new Error("Table not found");
 		}
 
-		if (table.status !== "booked") {
-			throw new Error("Only booked tables can be marked occupied");
+		if (table.status === "inactive") {
+			throw new Error("Inactive tables cannot be marked occupied");
+		}
+
+		if (table.status === "occupied") {
+			return table;
+		}
+
+		const now = Date.now();
+		const reservations = await ctx.db
+			.query("reservations")
+			.withIndex("by_tableId_startTime", (query) =>
+				query
+					.eq("tableId", table._id)
+					.gte("startTime", getReservationSearchWindowStart(now))
+					.lte("startTime", now),
+			)
+			.collect();
+		const hasActiveConfirmedReservation = reservations.some(
+			(reservation) =>
+				reservation.status === "confirmed" &&
+				isReservationActiveAt(reservation, now),
+		);
+
+		if (!hasActiveConfirmedReservation) {
+			throw new Error(
+				"Only tables with an active confirmed reservation can be marked occupied",
+			);
 		}
 
 		await ctx.db.patch(table._id, {
@@ -273,6 +327,10 @@ export const release = mutation({
 		const table = await ctx.db.get(args.id);
 		if (!table) {
 			throw new Error("Table not found");
+		}
+
+		if (table.status === "inactive") {
+			throw new Error("Inactive tables cannot be released");
 		}
 
 		await ctx.db.patch(table._id, {

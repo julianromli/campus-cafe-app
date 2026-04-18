@@ -93,8 +93,10 @@ export default defineSchema({
 		userId: v.id("users"),
 	})
 		.index("by_status", ["status"])
+		.index("by_startTime", ["startTime"])
 		.index("by_tableId_startTime", ["tableId", "startTime"])
-		.index("by_userId", ["userId"]),
+		.index("by_userId", ["userId"])
+		.index("by_userId_startTime", ["userId", "startTime"]),
 
 	/**
 	 * Event listings are information-only; `externalUrl` is required to publish (enforced in mutations).
@@ -155,8 +157,10 @@ export default defineSchema({
 
 	payments: defineTable({
 		amount: v.number(),
+		checkoutUrl: v.optional(v.string()),
 		createdAt: v.number(),
 		currency: v.literal("IDR"),
+		expiresAt: v.optional(v.number()),
 		refId: v.string(),
 		status: paymentStatus,
 		targetId: v.string(),

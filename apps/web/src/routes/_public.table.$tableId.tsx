@@ -15,16 +15,15 @@ export default function TableLandingPage() {
 	const { tableId: tableIdParam } = useParams();
 	const location = useLocation();
 	const tableId = tableIdParam as Id<"tables"> | undefined;
+	const [referenceTimestamp] = useState(() => Date.now());
 
 	const table = useQuery(
 		api.tables.getById,
-		tableId ? { id: tableId } : "skip",
+		tableId ? { id: tableId, referenceTimestamp } : "skip",
 	);
 	const user = useQuery(api.users.getMe);
 
 	const [signInOpen, setSignInOpen] = useState(false);
-
-	const [referenceTimestamp] = useState(() => Date.now());
 
 	const activeOrders = useQuery(
 		api.orders.listActiveForUserAtTable,

@@ -3,8 +3,9 @@ import type { Id } from "@campus-cafe/backend/convex/_generated/dataModel";
 import { Button } from "@campus-cafe/ui/components/button";
 import { Input } from "@campus-cafe/ui/components/input";
 import { Label } from "@campus-cafe/ui/components/label";
-import { useAction, useMutation } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router";
 import { toast } from "sonner";
 
 import SidePanel from "@/components/side-panel";
@@ -52,10 +53,9 @@ export default function ReservationFormSheet({
 	open,
 	table,
 }: ReservationFormSheetProps) {
-	const createReservation = useMutation(api.reservations.create);
-	const createPaymentLink = useAction(
-		api.payments.createReservationPaymentLink,
-	);
+	const [referenceTimestamp] = useState(() => Date.now());
+	const startReservationCheckout = useAction(api.payments.startReservationCheckout);
+	const user = useQuery(api.users.getMe);
 	const minDate = useMemo(() => getMinDate(), []);
 	const maxDate = useMemo(() => getMaxDate(), []);
 
@@ -81,6 +81,23 @@ export default function ReservationFormSheet({
 		setGuestCount("1");
 	}, [table]);
 
+	const startTimestamp = useMemo(() => {
+		const parsed = new Date(`${date}T${startTime}:00`).getTime();
+		return Number.isFinite(parsed) ? parsed : null;
+	}, [date, startTime]);
+	const availability = useQuery(
+		api.reservations.checkAvailability,
+		table && startTimestamp !== null
+			? {
+					durationHours,
+					referenceTimestamp,
+					startTime: startTimestamp,
+					tableId: table._id,
+				}
+			: "skip",
+	);
+	const needsPhone = user !== undefined && user !== null && !user.phone;
+
 	const reservationSummary = table
 		? `${table.label} • ${table.zone} • ${table.capacity} seats`
 		: "Select a table";
@@ -92,7 +109,14 @@ export default function ReservationFormSheet({
 			</Button>
 			<Button
 				className="min-h-11 w-full sm:w-auto"
-				disabled={!table || submitting}
+				disabled={
+					!table ||
+					submitting ||
+					user === undefined ||
+					user === null ||
+					needsPhone ||
+					availability === false
+				}
 				onClick={async () => {
 					if (!table) {
 						return;
@@ -102,27 +126,21 @@ export default function ReservationFormSheet({
 
 					try {
 						const guestTotal = Number(guestCount);
-						const startTimestamp = new Date(
-							`${date}T${startTime}:00`,
-						).getTime();
 
-						if (!Number.isFinite(startTimestamp)) {
+						if (startTimestamp === null) {
 							throw new Error("Select a valid reservation date and time");
 						}
 
-						const reservation = await createReservation({
+						const checkout = await startReservationCheckout({
 							durationHours,
-							...(eventId ? { eventId } : {}),
 							guestCount: guestTotal,
+							mode: "new",
+							...(eventId ? { eventId } : {}),
 							startTime: startTimestamp,
 							tableId: table._id,
 						});
 
-						const payment = await createPaymentLink({
-							reservationId: reservation.reservationId,
-						});
-
-						window.location.href = payment.paymentUrl;
+						window.location.href = checkout.paymentUrl;
 					} catch (error) {
 						toast.error(
 							error instanceof Error
@@ -150,9 +168,29 @@ export default function ReservationFormSheet({
 				<section className="rounded-md border border-border p-4">
 					<div className="font-medium text-sm">{reservationSummary}</div>
 					<p className="mt-1 text-muted-foreground text-sm">
-						Only available tables can continue to the payment step.
+						Floor status shows the live room state. Your selected slot will be
+						re-checked before checkout starts.
 					</p>
 				</section>
+
+				{needsPhone ? (
+					<section className="rounded-md border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+						<div className="font-medium text-foreground">
+							Add a phone number before continuing
+						</div>
+						<p className="mt-1 text-muted-foreground">
+							Mayar checkout needs a phone number from your profile.
+						</p>
+						<Button
+							className="mt-3"
+							render={<Link to="/profile" />}
+							size="sm"
+							variant="outline"
+						>
+							Open profile
+						</Button>
+					</section>
+				) : null}
 
 				<div className="flex flex-col gap-2">
 					<Label htmlFor="reservation-date">Date</Label>
@@ -209,6 +247,17 @@ export default function ReservationFormSheet({
 						onChange={(event) => setGuestCount(event.target.value)}
 					/>
 				</div>
+
+				{availability === false ? (
+					<section className="rounded-md border border-destructive/30 bg-destructive/10 p-4 text-destructive text-sm">
+						This table already has an overlapping reservation for the selected
+						time.
+					</section>
+				) : availability === true ? (
+					<section className="rounded-md border border-primary/30 bg-primary/10 p-4 text-primary text-sm">
+						This table is available for the selected reservation slot.
+					</section>
+				) : null}
 
 				<section className="rounded-md border border-border bg-muted/40 p-4 text-muted-foreground text-sm">
 					Pembatalan dapat dilakukan minimal 2 jam sebelum jadwal. Refund

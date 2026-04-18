@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-04-19
+
+### Reservation hardening
+- **Slot-based reservation rules (`packages/backend/convex/reservations.ts`, `packages/backend/convex/schema.ts`, `packages/backend/convex/lib/reservation_utils.ts`):** reservations no longer depend on `tables.status === "available"` to allow future booking. The backend now validates booking windows server-side (future only, hourly slots, 10:00-21:00, max 7 days ahead), checks overlap with bounded indexed queries, and adds `reservations.by_startTime` plus `reservations.by_userId_startTime` to keep board/active-reservation lookups off full-table scans.
+- **Checkout orchestration (`packages/backend/convex/payments.ts`, `packages/backend/convex/reservations.ts`):** customer checkout now starts through `payments.startReservationCheckout`, which creates the pending reservation, reuses an active pending payment link when possible, stores checkout metadata on the payment row, and compensates by cancelling the pending hold when Mayar link creation fails before a usable checkout session is recorded.
+- **Operational table state (`packages/backend/convex/tables.ts`, `packages/backend/convex/reservations.ts`, `packages/backend/convex/orders.ts`):** table status is now treated as live floor state instead of a future-lock for all reservations. Public table queries derive `booked` from active confirmed reservations at the provided `referenceTimestamp`, `markOccupied` requires an active confirmed reservation, and `release` no longer hides an in-progress booking from the floor plan.
+- **Customer/staff UX (`apps/web/src/components/reserve/reservation-form-sheet.tsx`, `apps/web/src/routes/_customer.reserve.tsx`, `apps/web/src/routes/_customer.my-reservations.tsx`, `apps/web/src/routes/staff.reservations.tsx`, `apps/web/src/routes/_public.events.$id.tsx`, `apps/web/src/routes/_public.table.$tableId.tsx`):** the reserve page now lets users inspect any active table and checks slot availability for the chosen schedule, pending reservations can resume payment from My Reservations, payment preflight surfaces missing phone numbers before retry, staff operations target the current/nearest relevant reservation, and event detail links now pass `eventId` plus a date prefill into `/reserve`.
+- **Verification (`packages/backend/convex/reservations.test.ts`, `packages/backend/vitest.config.ts`, `packages/backend/package.json`):** added focused `convex-test` coverage for overlap rejection, booking-window validation, checkout rollback, idempotent payment confirmation, future-vs-current table status derivation, and release behavior during an active reservation. Frontend typecheck also uncovered and fixed the stale `user.image` access in `apps/web/src/components/user-menu.tsx`.
+
 ## 2026-04-17
 
 ### Post-launch review fixes — follow-up (#4, #6, #7)

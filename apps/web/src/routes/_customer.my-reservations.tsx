@@ -7,9 +7,9 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@campus-cafe/ui/components/card";
-import { useMutation, useQuery } from "convex/react";
+import { useAction, useMutation, useQuery } from "convex/react";
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { toast } from "sonner";
 
 import ConfirmDialog from "@/components/confirm-dialog";
@@ -47,10 +47,15 @@ function getStatusLabel(status: "pending" | "confirmed" | "cancelled") {
 
 export default function MyReservationsPage() {
 	const reservations = useQuery(api.reservations.listByUser);
+	const user = useQuery(api.users.getMe);
 	const cancelReservation = useMutation(api.reservations.cancel);
+	const startReservationCheckout = useAction(api.payments.startReservationCheckout);
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [activeTab, setActiveTab] = useState<ReservationTab>("upcoming");
 	const [pendingReservationId, setPendingReservationId] = useState<
+		string | null
+	>(null);
+	const [pendingCheckoutReservationId, setPendingCheckoutReservationId] = useState<
 		string | null
 	>(null);
 	const [confirmingReservationId, setConfirmingReservationId] = useState<
@@ -91,6 +96,7 @@ export default function MyReservationsPage() {
 		activeTab === "upcoming"
 			? groupedReservations.upcoming
 			: groupedReservations.past;
+	const canCreateNewPaymentLink = Boolean(user?.phone);
 	const reservationPendingCancellation =
 		confirmingReservationId !== null
 			? (reservations?.find(
@@ -171,6 +177,49 @@ export default function MyReservationsPage() {
 									</div>
 									{reservation.eventId ? (
 										<div>Linked event reservation</div>
+									) : null}
+									{activeTab === "upcoming" &&
+									reservation.status === "pending" ? (
+										<div className="flex flex-wrap gap-2 pt-2">
+											{canCreateNewPaymentLink ? (
+												<Button
+													disabled={
+														pendingCheckoutReservationId === reservation._id
+													}
+													size="sm"
+													variant="outline"
+													onClick={async () => {
+														setPendingCheckoutReservationId(reservation._id);
+														try {
+															const checkout = await startReservationCheckout({
+																mode: "resume",
+																reservationId: reservation._id,
+															});
+															window.location.href = checkout.paymentUrl;
+														} catch (error) {
+															toast.error(
+																error instanceof Error
+																	? error.message
+																	: "Failed to continue payment",
+															);
+															setPendingCheckoutReservationId(null);
+														}
+													}}
+												>
+													{pendingCheckoutReservationId === reservation._id
+														? "Preparing payment..."
+														: "Continue payment"}
+												</Button>
+											) : (
+												<Button
+													render={<Link to="/profile" />}
+													size="sm"
+													variant="outline"
+												>
+													Add phone to continue payment
+												</Button>
+											)}
+										</div>
 									) : null}
 									{activeTab === "upcoming" &&
 									reservation.status === "confirmed" ? (
