@@ -1,7 +1,7 @@
 import { Resend } from "@convex-dev/resend";
 import { v } from "convex/values";
 
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import { internalMutation } from "./_generated/server";
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -167,14 +167,10 @@ export const sendBookingConfirmation = internalMutation({
 			return null;
 		}
 
-		const targetKey = String(args.reservationId);
-		const payment = await ctx.db
-			.query("payments")
-			.withIndex("by_targetId", (q) => q.eq("targetId", targetKey))
-			.filter((q) => q.eq(q.field("type"), "reservation"))
-			.first();
-
-		const totalIdr = formatIdr(payment?.amount ?? 0);
+		const payment = await ctx.runQuery(internal.payments.getReservationPayment, {
+			reservationId: args.reservationId,
+		});
+		const totalIdr = formatIdr(payment?.totalPayment ?? payment?.amount ?? 0);
 		const code = reservation.confirmationCode ?? "";
 		const endTimeMs =
 			reservation.startTime + reservation.durationHours * HOUR_MS;

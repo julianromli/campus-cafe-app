@@ -1,7 +1,7 @@
 import { httpRouter } from "convex/server";
 
 import { authComponent, createAuth } from "./auth";
-import { mayarWebhook } from "./payments";
+import { pakasirWebhook } from "./payments";
 
 const http = httpRouter();
 
@@ -11,9 +11,9 @@ authComponent.registerRoutesLazy(http, createAuth, {
 });
 
 http.route({
-	handler: mayarWebhook,
+	handler: pakasirWebhook,
 	method: "POST",
-	path: "/mayar/webhook",
+	path: "/pakasir/webhook",
 });
 
 export default http;

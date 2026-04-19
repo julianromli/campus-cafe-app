@@ -72,7 +72,7 @@ Schema validasi ada di `packages/env/src/web.ts`. Web memakai Vite: variabel yan
 | `VITE_CONVEX_SITE_URL` | Ya | Origin Convex untuk HTTP/actions (`https://…convex.site`) — Better Auth client (`baseURL`) |
 | `VITE_GOOGLE_CLIENT_ID` | Tidak | Jika diisi, tombol sign-in Google di `/sign-in` aktif |
 
-**Yang tidak dipakai runtime frontend:** `BETTER_AUTH_SECRET`, `MAYAR_*`, `RESEND_*`, dan secret lain untuk backend — itu untuk [Convex](#environment--convex-deployment-backend), jangan mengandalkan mereka di kode client.
+**Yang tidak dipakai runtime frontend:** `BETTER_AUTH_SECRET`, `PAKASIR_*`, `RESEND_*`, dan secret lain untuk backend — itu untuk [Convex](#environment--convex-deployment-backend), jangan mengandalkan mereka di kode client.
 
 Salin `VITE_CONVEX_URL` dan `VITE_CONVEX_SITE_URL` dari output `bun run dev:setup` / `packages/backend/.env.local` (nilai `CONVEX_URL` → `VITE_CONVEX_URL`, `CONVEX_SITE_URL` → `VITE_CONVEX_SITE_URL`).
 
@@ -131,25 +131,28 @@ npx convex env set RESEND_TEST_MODE false
 
 `SITE_URL` dipakai untuk link “Lihat reservasiku” di email konfirmasi.
 
-### Mayar.id (pembayaran)
+### Pakasir QRIS (pembayaran)
 
 | Variabel | Wajib? | Fungsi |
 | -------- | ------ | ------ |
-| `MAYAR_API_KEY` | Ya untuk bayar & sync | Membuat link pembayaran + polling status (admin **Sync Status**) |
-| `MAYAR_WEBHOOK_SECRET` | Sangat disarankan di production | Verifikasi webhook; nilai harus cocok dengan header dari Mayar (`x-mayar-webhook-secret` / `x-webhook-secret` / `Authorization: Bearer …`) |
-| `MAYAR_PAYMENT_CREATE_URL` | Tidak | Override endpoint create (default: `https://api.mayar.id/hl/v1/payment/create`) |
-| `MAYAR_TRANSACTIONS_URL` | Tidak | Override daftar transaksi untuk sinkron manual (default: `https://api.mayar.id/hl/v1/transactions`) |
+| `PAKASIR_PROJECT` | Ya | Slug proyek Pakasir untuk create/detail/cancel transaction |
+| `PAKASIR_API_KEY` | Ya | API key Pakasir untuk create/detail/cancel transaction |
+| `PAKASIR_TRANSACTION_CREATE_URL` | Tidak | Override endpoint create QRIS (default: `https://app.pakasir.com/api/transactioncreate/qris`) |
+| `PAKASIR_TRANSACTION_DETAIL_URL` | Tidak | Override endpoint verifikasi status (default: `https://app.pakasir.com/api/transactiondetail`) |
+| `PAKASIR_TRANSACTION_CANCEL_URL` | Tidak | Override endpoint pembatalan transaksi (default: `https://app.pakasir.com/api/transactioncancel`) |
+
+Webhook Pakasir dikirim ke route Convex `POST /pakasir/webhook`. Karena docs publik Pakasir tidak menjelaskan signature secret khusus, backend tidak langsung mempercayai body webhook: callback selalu diverifikasi ulang ke `transactiondetail`, dan reservasi hanya dikonfirmasi saat `project`, `order_id`, `amount`, dan `status === "completed"` cocok dengan data lokal.
 
 ### Harga reservasi
 
 | Variabel | Wajib? | Fungsi |
 | -------- | ------ | ------ |
-| `RESERVATION_PRICE_PER_HOUR` | Ya untuk total benar | IDR per jam (integer). Total = `durationHours × RESERVATION_PRICE_PER_HOUR` di `payments.createReservationPaymentLink` |
+| `RESERVATION_PRICE_PER_HOUR` | Ya untuk total benar | IDR per jam (integer). Total = `durationHours × RESERVATION_PRICE_PER_HOUR` di `payments.startReservationCheckout` |
 
 ### Keamanan
 
 - Jangan commit file `.env` berisi secret ke git.
-- Rotasi token jika pernah terbocor (Cloudflare, Mayar, `BETTER_AUTH_SECRET`, dll.).
+- Rotasi token jika pernah terbocor (Cloudflare, Pakasir, `BETTER_AUTH_SECRET`, dll.).
 
 ### CI/CD deploy backend
 
@@ -159,7 +162,11 @@ Untuk perintah Convex non-interaktif bisa dipakai `CONVEX_DEPLOY_KEY` — lihat 
 
 ## Reservation hold (auto-expire)
 
-Setelah customer klik *Reservasi* dan sebelum selesai membayar di Mayar, slot di-hold sebagai `pending` dan juga mem-blok pengguna lain untuk slot/waktu yang sama. Jika pembayaran tidak selesai dalam **30 menit**, reservasi otomatis dibatalkan oleh `internal.reservations.expirePendingReservation` (dijadwalkan via `ctx.scheduler.runAfter`). Customer yang terkena expiry dapat mencoba membooking ulang.
+Setelah customer klik *Reservasi* dan transaksi QRIS berhasil dibuat, slot di-hold sebagai `pending` dan juga mem-blok pengguna lain untuk slot/waktu yang sama. Backend menyimpan deadline dari `expired_at` Pakasir dan menjadwalkan expiry kedua selain hold lokal 30 menit. Jika pembayaran tidak selesai sebelum deadline aktif, reservasi otomatis dibatalkan dan payment lokal ditandai gagal. Customer yang terkena expiry dapat mencoba membooking ulang.
+
+Saat checkout QRIS sedang dibuat, backend juga memasang lock singkat per reservasi agar double click / multi-tab tidak membuat dua QR order aktif sekaligus. Selama lock ini aktif, request checkout lain akan menunggu hasil checkout yang sedang diproses lalu memakai sesi yang sama jika berhasil.
+
+Jika reservasi masih `pending` dan belum dikonfirmasi pembayaran, customer dapat membatalkan checkout kapan saja dari sheet QRIS. Aturan cutoff 2 jam tetap berlaku untuk reservasi yang sudah `confirmed`.
 
 ---
 
@@ -178,7 +185,7 @@ Acuan: `docs/PRD.md` v1.3 dan `docs/BACKLOG.md`. Tandai manual saat verifikasi p
 
 - [ ] Floor plan: hijau bisa klik, merah tidak, meja inactive tidak tampil untuk customer; pembaruan real-time (±2 detik)
 - [ ] Form: tanggal dalam window, jam, durasi 1/2/3 jam, jumlah tamu ≤ kapasitas; konflik slot ditolak (frontend + backend)
-- [ ] Alur bayar: buat reservasi → redirect Mayar → webhook `payment.received` → `confirmed`, meja `booked`, email konfirmasi (jika Resend aktif)
+- [ ] Alur bayar: buat reservasi → QRIS tampil inline → webhook Pakasir → verifikasi `transactiondetail` → `confirmed`, email konfirmasi (jika Resend aktif)
 - [ ] Idempotency webhook: permintaan ganda tidak mengubah state dua kali
 - [ ] **Reservasi saya:** tab upcoming/past, kode konfirmasi, pembatalan dalam window; pesan refund; error jika melewati cutoff
 - [ ] Pembatalan reservasi berbayar: notifikasi in-app admin + email pembatalan
@@ -215,7 +222,7 @@ Acuan: `docs/PRD.md` v1.3 dan `docs/BACKLOG.md`. Tandai manual saat verifikasi p
 
 ### Pembayaran (admin)
 
-- [ ] Daftar pembayaran; tombol **Sync Status** untuk `pending` saat webhook gagal (butuh `MAYAR_API_KEY` + endpoint transaksi)
+- [ ] Daftar pembayaran; tombol **Sync Status** untuk `pending` saat webhook gagal (butuh `PAKASIR_PROJECT` + `PAKASIR_API_KEY`)
 
 ### Polish
 
@@ -226,8 +233,56 @@ Acuan: `docs/PRD.md` v1.3 dan `docs/BACKLOG.md`. Tandai manual saat verifikasi p
 ### Non-fungsional / production
 
 - [ ] `SITE_URL` dan redirect OAuth/email cocok dengan domain deployment
-- [ ] Webhook Mayar: secret cocok dengan konfigurasi di dashboard Mayar
+- [ ] Webhook Pakasir masuk ke `/pakasir/webhook` dan hanya mengonfirmasi reservasi setelah `transactiondetail` valid
 - [ ] Opsional: LCP / performa (target PRD: di bawah 2,5 s di koneksi mobile) — Lighthouse atau uji manual
+
+---
+
+## Next step user actions
+
+Setelah kode migrasi Pakasir QRIS selesai, ini urutan aksi yang perlu dilakukan di sisi user/operator:
+
+1. Siapkan project Pakasir:
+   - Login ke Pakasir.
+   - Buat / pilih project yang dipakai untuk Campus Cafe.
+   - Salin `slug project` dan `API key`.
+
+2. Set environment di Convex backend:
+
+```bash
+cd packages/backend
+npx convex env set PAKASIR_PROJECT your-project-slug
+npx convex env set PAKASIR_API_KEY your-pakasir-api-key
+npx convex env set RESERVATION_PRICE_PER_HOUR 50000
+npx convex env set SITE_URL https://your-app-domain.com
+```
+
+3. Daftarkan webhook di dashboard Pakasir:
+   - Arahkan webhook ke `https://<convex-site>/pakasir/webhook`
+   - Pastikan URL ini memakai origin Convex `.site`, bukan origin frontend.
+
+4. Deploy / restart backend:
+   - Jalankan `npx convex dev` untuk environment dev, atau deploy ke environment yang dipakai testing/production.
+   - Pastikan schema terbaru dan function `payments.ts` sudah tersinkron.
+
+5. Lakukan smoke test end-to-end:
+   - Buka `/reserve`
+   - Buat reservasi baru
+   - Pastikan sheet QRIS tampil
+   - Cek countdown, payment guide, download QR, dan cancel
+   - Simulasikan / lakukan pembayaran dan pastikan reservasi berubah menjadi `confirmed`
+
+6. Verifikasi fallback admin:
+   - Buka halaman admin payments
+   - Pastikan tombol **Sync Status** bisa mengecek transaksi `pending` lewat Pakasir `transactiondetail`
+
+7. Cek expiry flow:
+   - Diamkan QRIS sampai kedaluwarsa
+   - Pastikan checkout tertutup, payment lokal gagal, dan reservasi pending ikut dilepas
+
+Catatan:
+- Webhook Pakasir di implementasi ini diperlakukan sebagai trigger saja; sumber kebenaran tetap `transactiondetail`.
+- Kalau URL app masih lokal, gunakan `SITE_URL` dev yang sesuai dan endpoint webhook Convex dev yang aktif.
 
 ---
 

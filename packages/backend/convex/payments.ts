@@ -10,7 +10,6 @@ import {
 	query,
 	type ActionCtx,
 } from "./_generated/server";
-import { PENDING_EXPIRY_MS } from "./lib/reservation_utils";
 import { requireRole } from "./lib/auth";
 
 const durationHoursValidator = v.union(
@@ -31,33 +30,49 @@ const paymentStatusValidator = v.union(
 	v.literal("refunded"),
 );
 
+const paymentProviderValidator = v.union(
+	v.literal("mayar"),
+	v.literal("pakasir"),
+);
+
 const paymentValidator = v.object({
 	_creationTime: v.number(),
 	_id: v.id("payments"),
 	amount: v.number(),
 	checkoutUrl: v.optional(v.string()),
+	completedAt: v.optional(v.number()),
 	createdAt: v.number(),
 	currency: v.literal("IDR"),
 	expiresAt: v.optional(v.number()),
+	fee: v.optional(v.number()),
+	paymentMethod: v.optional(v.string()),
+	paymentNumber: v.optional(v.string()),
+	provider: v.optional(paymentProviderValidator),
 	refId: v.string(),
 	status: paymentStatusValidator,
 	targetId: v.string(),
+	totalPayment: v.optional(v.number()),
 	type: paymentTypeValidator,
 });
 
-const paymentLinkResultValidator = v.object({
-	paymentUrl: v.string(),
+const checkoutPaymentValidator = v.object({
+	amount: v.number(),
+	expiresAt: v.number(),
+	fee: v.optional(v.number()),
+	paymentMethod: v.string(),
+	paymentNumber: v.string(),
+	provider: v.literal("pakasir"),
+	refId: v.string(),
+	totalPayment: v.number(),
+});
+
+const reservationCheckoutSessionValidator = v.object({
+	activePayment: checkoutPaymentValidator,
 	reservationId: v.id("reservations"),
 });
 
-const pendingPaymentLinkValidator = v.object({
-	checkoutUrl: v.string(),
-	expiresAt: v.number(),
-	refId: v.string(),
-});
-
 const pendingReservationCheckoutValidator = v.object({
-	activePayment: v.union(pendingPaymentLinkValidator, v.null()),
+	activePayment: v.union(checkoutPaymentValidator, v.null()),
 	reservation: v.object({
 		confirmationCode: v.optional(v.string()),
 		durationHours: durationHoursValidator,
@@ -78,14 +93,91 @@ const startReservationCheckoutArgsValidator = v.object({
 	tableId: v.optional(v.id("tables")),
 });
 
-const mayarResponseValidator = v.object({
-	transactionId: v.string(),
-	url: v.string(),
+const applyResultValidator = v.union(
+	v.literal("applied"),
+	v.literal("already_paid"),
+	v.literal("ignored"),
+	v.literal("not_found"),
+);
+
+const cancelCheckoutResultValidator = v.object({
+	result: v.union(
+		v.literal("cancelled"),
+		v.literal("paid"),
+		v.literal("already_cancelled"),
+	),
 });
 
-const MAYAR_CREATE_PAYMENT_URL =
-	process.env.MAYAR_PAYMENT_CREATE_URL ??
-	"https://api.mayar.id/hl/v1/payment/create";
+const syncReservationPaymentResultValidator = v.object({
+	apiStatus: v.optional(v.string()),
+	result: v.union(
+		v.literal("ignored"),
+		v.literal("mismatch"),
+		v.literal("paid"),
+		v.literal("pending"),
+		v.literal("not_found_in_pakasir"),
+		v.literal("not_pending_locally"),
+		v.literal("wrong_type"),
+	),
+});
+
+const checkoutLockResultValidator = v.union(
+	v.object({
+		activePayment: checkoutPaymentValidator,
+		reservationId: v.id("reservations"),
+		status: v.literal("active"),
+	}),
+	v.object({
+		lockExpiresAt: v.number(),
+		status: v.literal("locked"),
+	}),
+	v.object({
+		lockExpiresAt: v.number(),
+		lockToken: v.string(),
+		reservation: v.object({
+			confirmationCode: v.optional(v.string()),
+			durationHours: durationHoursValidator,
+			guestCount: v.number(),
+			reservationId: v.id("reservations"),
+			startTime: v.number(),
+			userId: v.id("users"),
+		}),
+		status: v.literal("ready"),
+	}),
+	v.object({
+		status: v.literal("not_found"),
+	}),
+);
+
+const PAKASIR_TRANSACTION_CREATE_URL =
+	process.env.PAKASIR_TRANSACTION_CREATE_URL ??
+	"https://app.pakasir.com/api/transactioncreate/qris";
+const PAKASIR_TRANSACTION_DETAIL_URL =
+	process.env.PAKASIR_TRANSACTION_DETAIL_URL ??
+	"https://app.pakasir.com/api/transactiondetail";
+const PAKASIR_TRANSACTION_CANCEL_URL =
+	process.env.PAKASIR_TRANSACTION_CANCEL_URL ??
+	"https://app.pakasir.com/api/transactioncancel";
+const CHECKOUT_LOCK_MS = 15_000;
+const CHECKOUT_LOCK_POLL_MS = 500;
+const MAX_CHECKOUT_ATTEMPTS = 3;
+
+type CheckoutUser = {
+	_id: Id<"users">;
+	email: string;
+	name: string;
+	phone?: string;
+	role: "admin" | "customer" | "staff";
+};
+
+type ParsedPakasirDetail = {
+	amount: number;
+	completedAt?: number;
+	orderId: string;
+	paymentMethod?: string;
+	project: string;
+	status: string;
+};
 
 function getReservationPricePerHour(): number {
 	const amount = Number(process.env.RESERVATION_PRICE_PER_HOUR ?? "0");
@@ -98,22 +190,22 @@ function getReservationPricePerHour(): number {
 	return Math.round(amount);
 }
 
-function getMayarApiKey(): string {
-	const apiKey = process.env.MAYAR_API_KEY;
+function getPakasirProject(): string {
+	const project = process.env.PAKASIR_PROJECT;
+	if (!project) {
+		throw new Error("PAKASIR_PROJECT is not configured");
+	}
+
+	return project;
+}
+
+function getPakasirApiKey(): string {
+	const apiKey = process.env.PAKASIR_API_KEY;
 	if (!apiKey) {
-		throw new Error("MAYAR_API_KEY is not configured");
+		throw new Error("PAKASIR_API_KEY is not configured");
 	}
 
 	return apiKey;
-}
-
-function getSiteUrl(): string {
-	const siteUrl = process.env.SITE_URL;
-	if (!siteUrl) {
-		throw new Error("SITE_URL is not configured");
-	}
-
-	return siteUrl.replace(/\/$/, "");
 }
 
 function jsonResponse(body: Record<string, string>, status = 200): Response {
@@ -129,194 +221,197 @@ function isObject(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null;
 }
 
-function parseMayarCreateResponse(response: unknown): {
-	transactionId: string;
-	url: string;
-} {
-	if (!isObject(response)) {
-		throw new Error("Unexpected response from Mayar");
+function parseIsoTimestamp(value: unknown, fieldName: string): number {
+	if (typeof value !== "string") {
+		throw new Error(`Pakasir response did not include ${fieldName}`);
 	}
 
-	const data = response.data;
-	if (!isObject(data)) {
-		throw new Error("Mayar response did not include payment data");
+	const parsed = Date.parse(value);
+	if (!Number.isFinite(parsed)) {
+		throw new Error(`Pakasir response included an invalid ${fieldName}`);
 	}
 
-	const transactionId =
-		typeof data.transactionId === "string"
-			? data.transactionId
-			: typeof data.transaction_id === "string"
-				? data.transaction_id
-				: null;
-
-	if (!transactionId || typeof data.link !== "string") {
-		throw new Error("Mayar response did not include a payment link");
-	}
-
-	return {
-		transactionId,
-		url: data.link,
-	};
+	return parsed;
 }
 
-function extractWebhookSecretCandidate(request: Request): string | null {
-	const candidates = [
-		request.headers.get("x-mayar-webhook-secret"),
-		request.headers.get("x-webhook-secret"),
-		request.headers.get("authorization"),
-	];
-
-	for (const candidate of candidates) {
-		if (!candidate) {
-			continue;
-		}
-
-		if (candidate.toLowerCase().startsWith("bearer ")) {
-			return candidate.slice(7).trim();
-		}
-
-		return candidate.trim();
-	}
-
-	return null;
-}
-
-function validateWebhookSecret(request: Request): boolean {
-	const expectedSecret = process.env.MAYAR_WEBHOOK_SECRET;
-	if (!expectedSecret) {
-		console.error(
-			"MAYAR_WEBHOOK_SECRET is not configured — rejecting webhook request. " +
-				"Set the env var in Convex to enable webhook delivery.",
-		);
-		return false;
-	}
-
-	const receivedSecret = extractWebhookSecretCandidate(request);
-	if (!receivedSecret) {
-		return false;
-	}
-
-	if (receivedSecret.length !== expectedSecret.length) {
-		return false;
-	}
-
-	let mismatch = 0;
-	for (let index = 0; index < expectedSecret.length; index += 1) {
-		mismatch |=
-			expectedSecret.charCodeAt(index) ^ receivedSecret.charCodeAt(index);
-	}
-	return mismatch === 0;
-}
-
-function parseWebhookPayload(body: unknown): {
-	amount?: number;
-	event?: string;
-	status?: string;
-	transactionId?: string;
-} {
-	const outerPayload = isObject(body) ? body : {};
-	let innerPayload: unknown = null;
-
-	if (typeof outerPayload.payload === "string") {
-		try {
-			innerPayload = JSON.parse(outerPayload.payload);
-		} catch {
-			innerPayload = null;
-		}
-	}
-
-	const inner = isObject(innerPayload) ? innerPayload : null;
-	const innerData = inner && isObject(inner.data) ? inner.data : null;
-
-	const transactionIdCandidates = [
-		typeof outerPayload.paymentLinkTransactionId === "string"
-			? outerPayload.paymentLinkTransactionId
-			: null,
-		innerData && typeof innerData.transactionId === "string"
-			? innerData.transactionId
-			: null,
-		innerData && typeof innerData.id === "string" ? innerData.id : null,
-	];
-
-	const transactionId =
-		transactionIdCandidates.find((candidate) => candidate !== null) ??
-		undefined;
-	const event =
-		typeof outerPayload.type === "string"
-			? outerPayload.type
-			: inner && typeof inner.event === "string"
-				? inner.event
-				: undefined;
-	const status =
-		typeof outerPayload.status === "string"
-			? outerPayload.status
-			: innerData && typeof innerData.status === "string"
-				? innerData.status
-				: undefined;
-	const amount =
-		innerData && typeof innerData.amount === "number"
-			? innerData.amount
-			: undefined;
-
-	return {
-		amount,
-		event,
-		status,
-		transactionId,
-	};
-}
-
-type CheckoutUser = {
-	_id: Id<"users">;
-	email: string;
-	name: string;
-	phone?: string;
-};
-
-async function createMayarReservationPayment(args: {
+function buildReservationOrderId(args: {
 	confirmationCode?: string;
-	durationHours: 1 | 2 | 3;
 	reservationId: Id<"reservations">;
-	user: CheckoutUser & { phone: string };
-}): Promise<{
+}): string {
+	const base =
+		(args.confirmationCode ?? args.reservationId)
+			.replace(/[^A-Za-z0-9_-]/g, "")
+			.toUpperCase() || "RESERVATION";
+	return `RES-${base}-${Date.now().toString(36).toUpperCase()}`;
+}
+
+function parsePakasirCreateResponse(response: unknown): {
 	amount: number;
 	expiresAt: number;
-	transactionId: string;
-	url: string;
-}> {
-	const amount = getReservationPricePerHour() * args.durationHours;
-	const expiresAt = Date.now() + PENDING_EXPIRY_MS;
-	const response = await fetch(MAYAR_CREATE_PAYMENT_URL, {
-		body: JSON.stringify({
-			amount,
-			description: `Campus Cafe reservation ${args.confirmationCode ?? args.reservationId}`,
-			email: args.user.email,
-			expiredAt: new Date(expiresAt).toISOString(),
-			mobile: args.user.phone,
-			name: args.user.name,
-			redirectUrl: `${getSiteUrl()}/my-reservations?success=true`,
-		}),
-		headers: {
-			Authorization: `Bearer ${getMayarApiKey()}`,
-			"Content-Type": "application/json",
-		},
-		method: "POST",
-	});
-
-	if (!response.ok) {
-		const responseText = await response.text();
-		throw new Error(
-			`Mayar payment creation failed: ${responseText || response.statusText}`,
-		);
+	fee?: number;
+	orderId: string;
+	paymentMethod: string;
+	paymentNumber: string;
+	totalPayment: number;
+} {
+	if (!isObject(response)) {
+		throw new Error("Unexpected response from Pakasir");
 	}
 
-	const parsedResponse = parseMayarCreateResponse(await response.json());
+	const payment = response.payment;
+	if (!isObject(payment)) {
+		throw new Error("Pakasir response did not include payment data");
+	}
+
+	if (typeof payment.order_id !== "string") {
+		throw new Error("Pakasir response did not include order_id");
+	}
+	if (typeof payment.amount !== "number") {
+		throw new Error("Pakasir response did not include amount");
+	}
+	if (typeof payment.payment_method !== "string") {
+		throw new Error("Pakasir response did not include payment_method");
+	}
+	if (typeof payment.payment_number !== "string") {
+		throw new Error("Pakasir response did not include payment_number");
+	}
+
+	const fee = typeof payment.fee === "number" ? payment.fee : undefined;
+	const totalPayment =
+		typeof payment.total_payment === "number"
+			? payment.total_payment
+			: payment.amount + (fee ?? 0);
+
 	return {
-		amount,
-		expiresAt,
-		transactionId: parsedResponse.transactionId,
-		url: parsedResponse.url,
+		amount: payment.amount,
+		expiresAt: parseIsoTimestamp(payment.expired_at, "expired_at"),
+		fee,
+		orderId: payment.order_id,
+		paymentMethod: payment.payment_method,
+		paymentNumber: payment.payment_number,
+		totalPayment,
 	};
+}
+
+function parsePakasirDetailResponse(response: unknown): ParsedPakasirDetail | null {
+	if (!isObject(response)) {
+		return null;
+	}
+
+	const transaction = response.transaction;
+	if (!isObject(transaction)) {
+		return null;
+	}
+
+	if (
+		typeof transaction.amount !== "number" ||
+		typeof transaction.order_id !== "string" ||
+		typeof transaction.project !== "string" ||
+		typeof transaction.status !== "string"
+	) {
+		return null;
+	}
+
+	return {
+		amount: transaction.amount,
+		completedAt:
+			typeof transaction.completed_at === "string"
+				? parseIsoTimestamp(transaction.completed_at, "completed_at")
+				: undefined,
+		orderId: transaction.order_id,
+		paymentMethod:
+			typeof transaction.payment_method === "string"
+				? transaction.payment_method
+				: undefined,
+		project: transaction.project,
+		status: transaction.status,
+	};
+}
+
+function parsePakasirWebhookPayload(body: unknown): {
+	amount?: number;
+	orderId?: string;
+	project?: string;
+	status?: string;
+} {
+	if (!isObject(body)) {
+		return {};
+	}
+
+	return {
+		amount: typeof body.amount === "number" ? body.amount : undefined,
+		orderId: typeof body.order_id === "string" ? body.order_id : undefined,
+		project: typeof body.project === "string" ? body.project : undefined,
+		status: typeof body.status === "string" ? body.status : undefined,
+	};
+}
+
+function createCheckoutLockToken(): string {
+	return `checkout_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function toCheckoutPayment(payment: {
+	amount: number;
+	expiresAt?: number;
+	fee?: number;
+	paymentMethod?: string;
+	paymentNumber?: string;
+	provider?: "mayar" | "pakasir";
+	refId: string;
+	totalPayment?: number;
+}) {
+	if (
+		payment.provider !== "pakasir" ||
+		typeof payment.expiresAt !== "number" ||
+		typeof payment.paymentMethod !== "string" ||
+		typeof payment.paymentNumber !== "string" ||
+		typeof payment.totalPayment !== "number"
+	) {
+		return null;
+	}
+
+	return {
+		amount: payment.amount,
+		expiresAt: payment.expiresAt,
+		fee: payment.fee,
+		paymentMethod: payment.paymentMethod,
+		paymentNumber: payment.paymentNumber,
+		provider: "pakasir" as const,
+		refId: payment.refId,
+		totalPayment: payment.totalPayment,
+	};
+}
+
+function selectActiveReservationPayment(
+	payments: Array<{
+		amount: number;
+		createdAt: number;
+		expiresAt?: number;
+		fee?: number;
+		paymentMethod?: string;
+		paymentNumber?: string;
+		provider?: "mayar" | "pakasir";
+		refId: string;
+		status: "failed" | "paid" | "pending" | "refunded";
+		totalPayment?: number;
+	}>,
+	referenceTimestamp: number,
+) {
+	const candidate =
+		payments
+			.filter(
+				(payment) =>
+					payment.status === "pending" &&
+					typeof payment.expiresAt === "number" &&
+					payment.expiresAt > referenceTimestamp,
+			)
+			.sort((left, right) => right.createdAt - left.createdAt)[0] ?? null;
+
+	return candidate ? toCheckoutPayment(candidate) : null;
+}
+
+async function sleep(ms: number): Promise<void> {
+	await new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function getUserForReservationCheckout(
@@ -330,81 +425,212 @@ async function getUserForReservationCheckout(
 	return user;
 }
 
-async function ensureReservationCheckoutLink(
+async function fetchPakasirTransactionDetail(args: {
+	amount: number;
+	refId: string;
+}): Promise<ParsedPakasirDetail | null> {
+	const url = new URL(PAKASIR_TRANSACTION_DETAIL_URL);
+	url.searchParams.set("amount", String(args.amount));
+	url.searchParams.set("api_key", getPakasirApiKey());
+	url.searchParams.set("order_id", args.refId);
+	url.searchParams.set("project", getPakasirProject());
+
+	const response = await fetch(url.toString());
+	if (!response.ok) {
+		const responseText = await response.text();
+		throw new Error(
+			`Pakasir transaction detail failed: ${responseText || response.statusText}`,
+		);
+	}
+
+	return parsePakasirDetailResponse(await response.json());
+}
+
+async function createPakasirReservationPayment(args: {
+	amount: number;
+	confirmationCode?: string;
+	reservationId: Id<"reservations">;
+}): Promise<{
+	amount: number;
+	expiresAt: number;
+	fee?: number;
+	paymentMethod: string;
+	paymentNumber: string;
+	refId: string;
+	totalPayment: number;
+}> {
+	const response = await fetch(PAKASIR_TRANSACTION_CREATE_URL, {
+		body: JSON.stringify({
+			amount: args.amount,
+			api_key: getPakasirApiKey(),
+			order_id: buildReservationOrderId({
+				confirmationCode: args.confirmationCode,
+				reservationId: args.reservationId,
+			}),
+			project: getPakasirProject(),
+		}),
+		headers: {
+			"Content-Type": "application/json",
+		},
+		method: "POST",
+	});
+
+	if (!response.ok) {
+		const responseText = await response.text();
+		throw new Error(
+			`Pakasir payment creation failed: ${responseText || response.statusText}`,
+		);
+	}
+
+	const parsed = parsePakasirCreateResponse(await response.json());
+	return {
+		amount: parsed.amount,
+		expiresAt: parsed.expiresAt,
+		fee: parsed.fee,
+		paymentMethod: parsed.paymentMethod,
+		paymentNumber: parsed.paymentNumber,
+		refId: parsed.orderId,
+		totalPayment: parsed.totalPayment,
+	};
+}
+
+async function waitForReservationCheckout(
+	ctx: ActionCtx,
+	args: {
+		lockExpiresAt: number;
+		reservationId: Id<"reservations">;
+		userId: Id<"users">;
+	},
+) {
+	while (Date.now() < args.lockExpiresAt) {
+		await sleep(CHECKOUT_LOCK_POLL_MS);
+		const checkout = await ctx.runQuery(
+			internal.payments.getPendingReservationCheckout,
+			{
+				referenceTimestamp: Date.now(),
+				reservationId: args.reservationId,
+				userId: args.userId,
+			},
+		);
+		if (!checkout) {
+			throw new Error("Pending reservation not found");
+		}
+
+		if (checkout.activePayment) {
+			return {
+				activePayment: checkout.activePayment,
+				reservationId: checkout.reservation.reservationId,
+			};
+		}
+	}
+
+	return null;
+}
+
+async function ensureReservationCheckoutSession(
 	ctx: ActionCtx,
 	args: {
 		reservationId: Id<"reservations">;
 		user: CheckoutUser;
 	},
-): Promise<{ paymentUrl: string; reservationId: Id<"reservations"> }> {
-	const checkout = await ctx.runQuery(
-		internal.payments.getPendingReservationCheckout,
-		{
-			referenceTimestamp: Date.now(),
-			reservationId: args.reservationId,
-			userId: args.user._id,
-		},
-	);
-	if (!checkout) {
-		throw new Error("Pending reservation not found");
-	}
-
-	if (checkout.activePayment) {
-		return {
-			paymentUrl: checkout.activePayment.checkoutUrl,
-			reservationId: checkout.reservation.reservationId,
+): Promise<{
+		activePayment: {
+			amount: number;
+			expiresAt: number;
+			fee?: number;
+			paymentMethod: string;
+			paymentNumber: string;
+			provider: "pakasir";
+			refId: string;
+			totalPayment: number;
 		};
+		reservationId: Id<"reservations">;
+	}> {
+	for (let attempt = 0; attempt < MAX_CHECKOUT_ATTEMPTS; attempt += 1) {
+		const claim = await ctx.runMutation(
+			internal.payments.claimReservationCheckoutLock,
+			{
+				referenceTimestamp: Date.now(),
+				reservationId: args.reservationId,
+				userId: args.user._id,
+			},
+		);
+
+		if (claim.status === "not_found") {
+			throw new Error("Pending reservation not found");
+		}
+
+		if (claim.status === "active") {
+			return {
+				activePayment: claim.activePayment,
+				reservationId: claim.reservationId,
+			};
+		}
+
+		if (claim.status === "locked") {
+			const existingCheckout = await waitForReservationCheckout(ctx, {
+				lockExpiresAt: claim.lockExpiresAt,
+				reservationId: args.reservationId,
+				userId: args.user._id,
+			});
+			if (existingCheckout) {
+				return existingCheckout;
+			}
+			continue;
+		}
+
+		const amount =
+			getReservationPricePerHour() * claim.reservation.durationHours;
+
+		try {
+			const payment = await createPakasirReservationPayment({
+				amount,
+				confirmationCode: claim.reservation.confirmationCode,
+				reservationId: claim.reservation.reservationId,
+			});
+
+			await ctx.runMutation(internal.payments.recordPendingReservationPayment, {
+				amount: payment.amount,
+				checkoutLockToken: claim.lockToken,
+				expiresAt: payment.expiresAt,
+				fee: payment.fee,
+				paymentMethod: payment.paymentMethod,
+				paymentNumber: payment.paymentNumber,
+				provider: "pakasir",
+				refId: payment.refId,
+				reservationId: claim.reservation.reservationId,
+				totalPayment: payment.totalPayment,
+			});
+
+			return {
+				activePayment: {
+					amount: payment.amount,
+					expiresAt: payment.expiresAt,
+					fee: payment.fee,
+					paymentMethod: payment.paymentMethod,
+					paymentNumber: payment.paymentNumber,
+					provider: "pakasir" as const,
+					refId: payment.refId,
+					totalPayment: payment.totalPayment,
+				},
+				reservationId: claim.reservation.reservationId,
+			};
+		} catch (error) {
+			await ctx.runMutation(internal.payments.releaseReservationCheckoutLock, {
+				lockToken: claim.lockToken,
+				reservationId: claim.reservation.reservationId,
+			});
+			throw error;
+		}
 	}
 
-	if (!args.user.phone) {
-		throw new Error("Add a phone number to your profile before continuing");
-	}
-
-	const payment = await createMayarReservationPayment({
-		confirmationCode: checkout.reservation.confirmationCode,
-		durationHours: checkout.reservation.durationHours,
-		reservationId: checkout.reservation.reservationId,
-		user: {
-			...args.user,
-			phone: args.user.phone,
-		},
-	});
-
-	await ctx.runMutation(internal.payments.recordPendingReservationPayment, {
-		amount: payment.amount,
-		checkoutUrl: payment.url,
-		expiresAt: payment.expiresAt,
-		refId: payment.transactionId,
-		reservationId: checkout.reservation.reservationId,
-	});
-
-	return {
-		paymentUrl: payment.url,
-		reservationId: checkout.reservation.reservationId,
-	};
+	throw new Error("Checkout is being prepared. Try again in a moment.");
 }
-
-export const createReservationPaymentLink = action({
-	args: {
-		reservationId: v.id("reservations"),
-	},
-	returns: paymentLinkResultValidator,
-	handler: async (ctx, args) => {
-		const user = await getUserForReservationCheckout(ctx);
-		return await ensureReservationCheckoutLink(ctx, {
-			reservationId: args.reservationId,
-			user,
-		});
-	},
-});
 
 export const startReservationCheckout = action({
 	args: startReservationCheckoutArgsValidator,
-	returns: paymentLinkResultValidator,
-	handler: async (
-		ctx,
-		args,
-	): Promise<{ paymentUrl: string; reservationId: Id<"reservations"> }> => {
+	returns: reservationCheckoutSessionValidator,
+	handler: async (ctx, args) => {
 		const user = await getUserForReservationCheckout(ctx);
 
 		if (args.mode === "resume") {
@@ -412,7 +638,7 @@ export const startReservationCheckout = action({
 				throw new Error("Reservation is required to resume checkout");
 			}
 
-			return await ensureReservationCheckoutLink(ctx, {
+			return await ensureReservationCheckoutSession(ctx, {
 				reservationId: args.reservationId,
 				user,
 			});
@@ -443,7 +669,7 @@ export const startReservationCheckout = action({
 		);
 
 		try {
-			return await ensureReservationCheckoutLink(ctx, {
+			return await ensureReservationCheckoutSession(ctx, {
 				reservationId: reservation.reservationId,
 				user,
 			});
@@ -453,6 +679,94 @@ export const startReservationCheckout = action({
 			});
 			throw error;
 		}
+	},
+});
+
+export const cancelReservationCheckout = action({
+	args: {
+		reservationId: v.id("reservations"),
+	},
+	returns: cancelCheckoutResultValidator,
+	handler: async (ctx, args) => {
+		const user = await getUserForReservationCheckout(ctx);
+		const reservation = await ctx.runQuery(api.reservations.getById, {
+			id: args.reservationId,
+		});
+
+		if (!reservation) {
+			throw new Error("Reservation not found");
+		}
+		if (reservation.userId !== user._id) {
+			throw new Error("Unauthorized");
+		}
+		if (reservation.status === "cancelled") {
+			return { result: "already_cancelled" as const };
+		}
+		if (reservation.status === "confirmed") {
+			return { result: "paid" as const };
+		}
+
+		const checkout = await ctx.runQuery(
+			internal.payments.getPendingReservationCheckout,
+			{
+				referenceTimestamp: Date.now(),
+				reservationId: args.reservationId,
+				userId: user._id,
+			},
+		);
+		if (!checkout) {
+			throw new Error("Pending reservation not found");
+		}
+
+		if (checkout.activePayment) {
+			const detail = await fetchPakasirTransactionDetail({
+				amount: checkout.activePayment.amount,
+				refId: checkout.activePayment.refId,
+			});
+			if (
+				detail &&
+				detail.project === getPakasirProject() &&
+				detail.orderId === checkout.activePayment.refId &&
+				detail.amount === checkout.activePayment.amount &&
+				detail.status === "completed"
+			) {
+				await ctx.runMutation(internal.payments.applyReservationPaymentSuccess, {
+					amount: detail.amount,
+					completedAt: detail.completedAt,
+					paymentMethod: detail.paymentMethod,
+					refId: detail.orderId,
+				});
+				return { result: "paid" as const };
+			}
+
+			const response = await fetch(PAKASIR_TRANSACTION_CANCEL_URL, {
+				body: JSON.stringify({
+					amount: checkout.activePayment.amount,
+					api_key: getPakasirApiKey(),
+					order_id: checkout.activePayment.refId,
+					project: getPakasirProject(),
+				}),
+				headers: {
+					"Content-Type": "application/json",
+				},
+				method: "POST",
+			});
+			if (!response.ok) {
+				const responseText = await response.text();
+				throw new Error(
+					`Pakasir transaction cancel failed: ${responseText || response.statusText}`,
+				);
+			}
+
+			await ctx.runMutation(internal.payments.markFailed, {
+				refId: checkout.activePayment.refId,
+			});
+		}
+
+		await ctx.runMutation(api.reservations.cancel, {
+			reservationId: args.reservationId,
+		});
+		return { result: "cancelled" as const };
 	},
 });
 
@@ -466,6 +780,140 @@ export const getByRefId = internalQuery({
 			.query("payments")
 			.withIndex("by_refId", (query) => query.eq("refId", args.refId))
 			.unique();
+	},
+});
+
+export const getReservationPayment = internalQuery({
+	args: {
+		reservationId: v.id("reservations"),
+	},
+	returns: v.union(paymentValidator, v.null()),
+	handler: async (ctx, args) => {
+		const reservation = await ctx.db.get(args.reservationId);
+		if (!reservation) {
+			return null;
+		}
+
+		if (reservation.paymentRef) {
+			return await ctx.db
+				.query("payments")
+				.withIndex("by_refId", (query) => query.eq("refId", reservation.paymentRef!))
+				.unique();
+		}
+
+		const payments = await ctx.db
+			.query("payments")
+			.withIndex("by_targetId_and_type", (query) =>
+				query.eq("targetId", args.reservationId).eq("type", "reservation"),
+			)
+			.collect();
+
+		return (
+			payments.sort((left, right) => right.createdAt - left.createdAt)[0] ?? null
+		);
+	},
+});
+
+export const claimReservationCheckoutLock = internalMutation({
+	args: {
+		referenceTimestamp: v.number(),
+		reservationId: v.id("reservations"),
+		userId: v.id("users"),
+	},
+	returns: checkoutLockResultValidator,
+	handler: async (ctx, args) => {
+		const reservation = await ctx.db.get(args.reservationId);
+		if (
+			!reservation ||
+			reservation.userId !== args.userId ||
+			reservation.status !== "pending"
+		) {
+			return { status: "not_found" as const };
+		}
+
+		const payments = await ctx.db
+			.query("payments")
+			.withIndex("by_targetId_and_type", (query) =>
+				query.eq("targetId", reservation._id).eq("type", "reservation"),
+			)
+			.collect();
+		const activePayment = selectActiveReservationPayment(
+			payments,
+			args.referenceTimestamp,
+		);
+
+		if (activePayment) {
+			if (
+				reservation.checkoutLockExpiresAt !== undefined ||
+				reservation.checkoutLockToken !== undefined
+			) {
+				await ctx.db.patch(reservation._id, {
+					checkoutLockExpiresAt: undefined,
+					checkoutLockToken: undefined,
+				});
+			}
+			return {
+				activePayment,
+				reservationId: reservation._id,
+				status: "active" as const,
+			};
+		}
+
+		if (
+			typeof reservation.checkoutLockExpiresAt === "number" &&
+			typeof reservation.checkoutLockToken === "string" &&
+			reservation.checkoutLockExpiresAt > args.referenceTimestamp
+		) {
+			return {
+				lockExpiresAt: reservation.checkoutLockExpiresAt,
+				status: "locked" as const,
+			};
+		}
+
+		const lockExpiresAt = args.referenceTimestamp + CHECKOUT_LOCK_MS;
+		const lockToken = createCheckoutLockToken();
+		await ctx.db.patch(reservation._id, {
+			checkoutLockExpiresAt: lockExpiresAt,
+			checkoutLockToken: lockToken,
+		});
+
+		return {
+			lockExpiresAt,
+			lockToken,
+			reservation: {
+				confirmationCode: reservation.confirmationCode,
+				durationHours: reservation.durationHours,
+				guestCount: reservation.guestCount,
+				reservationId: reservation._id,
+				startTime: reservation.startTime,
+				userId: reservation.userId,
+			},
+			status: "ready" as const,
+		};
+	},
+});
+
+export const releaseReservationCheckoutLock = internalMutation({
+	args: {
+		lockToken: v.string(),
+		reservationId: v.id("reservations"),
+	},
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		const reservation = await ctx.db.get(args.reservationId);
+		if (!reservation || reservation.status !== "pending") {
+			return null;
+		}
+
+		if (reservation.checkoutLockToken !== args.lockToken) {
+			return null;
+		}
+
+		await ctx.db.patch(reservation._id, {
+			checkoutLockExpiresAt: undefined,
+			checkoutLockToken: undefined,
+		});
+		return null;
 	},
 });
 
@@ -488,30 +936,18 @@ export const getPendingReservationCheckout = internalQuery({
 
 		const payments = await ctx.db
 			.query("payments")
-			.withIndex("by_targetId", (query) =>
-				query.eq("targetId", reservation._id),
+			.withIndex("by_targetId_and_type", (query) =>
+				query.eq("targetId", reservation._id).eq("type", "reservation"),
 			)
 			.collect();
-		const activePayment =
-			payments
-				.filter(
-					(payment) =>
-						payment.type === "reservation" &&
-						payment.status === "pending" &&
-						typeof payment.checkoutUrl === "string" &&
-						typeof payment.expiresAt === "number" &&
-						payment.expiresAt > args.referenceTimestamp,
-				)
-				.sort((left, right) => right.createdAt - left.createdAt)[0] ?? null;
+
+		const activePayment = selectActiveReservationPayment(
+			payments,
+			args.referenceTimestamp,
+		);
 
 		return {
-			activePayment: activePayment
-				? {
-						checkoutUrl: activePayment.checkoutUrl!,
-						expiresAt: activePayment.expiresAt!,
-						refId: activePayment.refId,
-					}
-				: null,
+			activePayment,
 			reservation: {
 				confirmationCode: reservation.confirmationCode,
 				durationHours: reservation.durationHours,
@@ -527,41 +963,87 @@ export const getPendingReservationCheckout = internalQuery({
 export const recordPendingReservationPayment = internalMutation({
 	args: {
 		amount: v.number(),
-		checkoutUrl: v.string(),
+		checkoutLockToken: v.optional(v.string()),
 		expiresAt: v.number(),
+		fee: v.optional(v.number()),
+		paymentMethod: v.string(),
+		paymentNumber: v.string(),
+		provider: v.literal("pakasir"),
 		refId: v.string(),
 		reservationId: v.id("reservations"),
+		totalPayment: v.number(),
 	},
 	returns: paymentValidator,
 	handler: async (ctx, args) => {
+		const expiresInMs = Math.max(0, args.expiresAt - Date.now());
 		const existingPayments = await ctx.db
 			.query("payments")
-			.withIndex("by_targetId", (query) =>
-				query.eq("targetId", args.reservationId),
+			.withIndex("by_targetId_and_type", (query) =>
+				query.eq("targetId", args.reservationId).eq("type", "reservation"),
 			)
 			.collect();
 
 		for (const payment of existingPayments) {
-			if (
-				payment.type === "reservation" &&
-				payment.status === "pending" &&
-				payment.refId !== args.refId
-			) {
+			if (payment.status === "pending" && payment.refId !== args.refId) {
 				await ctx.db.patch(payment._id, {
 					status: "failed",
 				});
 			}
 		}
 
+		const existing = existingPayments.find((payment) => payment.refId === args.refId);
+		if (existing) {
+			await ctx.db.patch(existing._id, {
+				amount: args.amount,
+				expiresAt: args.expiresAt,
+				fee: args.fee,
+				paymentMethod: args.paymentMethod,
+				paymentNumber: args.paymentNumber,
+				provider: args.provider,
+				status: "pending",
+				totalPayment: args.totalPayment,
+			});
+			const payment = await ctx.db.get(existing._id);
+			if (!payment) {
+				throw new Error("Payment record not found");
+			}
+			const reservation = await ctx.db.get(args.reservationId);
+			if (
+				reservation &&
+				args.checkoutLockToken &&
+				reservation.checkoutLockToken === args.checkoutLockToken
+			) {
+				await ctx.db.patch(reservation._id, {
+					checkoutLockExpiresAt: undefined,
+					checkoutLockToken: undefined,
+				});
+			}
+			await ctx.scheduler.runAfter(
+				expiresInMs,
+				internal.payments.expireReservationPayment,
+				{ refId: args.refId },
+			);
+			await ctx.scheduler.runAfter(
+				expiresInMs,
+				internal.reservations.expirePendingReservation,
+				{ reservationId: args.reservationId },
+			);
+			return payment;
+		}
+
 		const id = await ctx.db.insert("payments", {
 			amount: args.amount,
-			checkoutUrl: args.checkoutUrl,
 			createdAt: Date.now(),
 			currency: "IDR",
 			expiresAt: args.expiresAt,
+			fee: args.fee,
+			paymentMethod: args.paymentMethod,
+			paymentNumber: args.paymentNumber,
+			provider: args.provider,
 			refId: args.refId,
 			status: "pending",
 			targetId: args.reservationId,
+			totalPayment: args.totalPayment,
 			type: "reservation",
 		});
 
@@ -569,14 +1051,63 @@ export const recordPendingReservationPayment = internalMutation({
 		if (!payment) {
 			throw new Error("Payment record not found");
 		}
+		const reservation = await ctx.db.get(args.reservationId);
+		if (
+			reservation &&
+			args.checkoutLockToken &&
+			reservation.checkoutLockToken === args.checkoutLockToken
+		) {
+			await ctx.db.patch(reservation._id, {
+				checkoutLockExpiresAt: undefined,
+				checkoutLockToken: undefined,
+			});
+		}
+		await ctx.scheduler.runAfter(
+			expiresInMs,
+			internal.payments.expireReservationPayment,
+			{ refId: args.refId },
+		);
+		await ctx.scheduler.runAfter(
+			expiresInMs,
+			internal.reservations.expirePendingReservation,
+			{ reservationId: args.reservationId },
+		);
 
 		return payment;
+	},
+});
+
+export const markFailed = internalMutation({
+	args: {
+		refId: v.string(),
+	},
+	returns: v.union(paymentValidator, v.null()),
+	handler: async (ctx, args) => {
+		const payment = await ctx.db
+			.query("payments")
+			.withIndex("by_refId", (query) => query.eq("refId", args.refId))
+			.unique();
+
+		if (!payment) {
+			return null;
+		}
+
+		if (payment.status !== "pending") {
+			return payment;
+		}
+
+		await ctx.db.patch(payment._id, {
+			status: "failed",
+		});
+		return await ctx.db.get(payment._id);
 	},
 });
 
 export const markPaid = internalMutation({
 	args: {
 		amount: v.optional(v.number()),
+		completedAt: v.optional(v.number()),
+		paymentMethod: v.optional(v.string()),
 		refId: v.string(),
 	},
 	returns: v.union(paymentValidator, v.null()),
@@ -596,6 +1127,8 @@ export const markPaid = internalMutation({
 
 		await ctx.db.patch(payment._id, {
 			...(args.amount !== undefined ? { amount: args.amount } : {}),
+			...(args.completedAt !== undefined ? { completedAt: args.completedAt } : {}),
+			...(args.paymentMethod ? { paymentMethod: args.paymentMethod } : {}),
 			status: "paid",
 		});
 
@@ -603,16 +1136,33 @@ export const markPaid = internalMutation({
 	},
 });
 
-const applyResultValidator = v.union(
-	v.literal("applied"),
-	v.literal("already_paid"),
-	v.literal("ignored"),
-	v.literal("not_found"),
-);
+export const expireReservationPayment = internalMutation({
+	args: {
+		refId: v.string(),
+	},
+	returns: v.null(),
+	handler: async (ctx, args) => {
+		const payment = await ctx.db
+			.query("payments")
+			.withIndex("by_refId", (query) => query.eq("refId", args.refId))
+			.unique();
+
+		if (!payment || payment.status !== "pending") {
+			return null;
+		}
+
+		await ctx.db.patch(payment._id, {
+			status: "failed",
+		});
+		return null;
+	},
+});
 
 export const applyReservationPaymentSuccess = internalMutation({
 	args: {
 		amount: v.optional(v.number()),
+		completedAt: v.optional(v.number()),
+		paymentMethod: v.optional(v.string()),
 		refId: v.string(),
 	},
 	returns: applyResultValidator,
@@ -655,6 +1205,8 @@ export const applyReservationPaymentSuccess = internalMutation({
 
 		await ctx.runMutation(internal.payments.markPaid, {
 			amount: args.amount,
+			completedAt: args.completedAt,
+			paymentMethod: args.paymentMethod,
 			refId: args.refId,
 		});
 
@@ -668,16 +1220,33 @@ export const applyReservationPaymentSuccess = internalMutation({
 	},
 });
 
-export const mayarWebhook = httpAction(async (ctx, request) => {
-	if (!validateWebhookSecret(request)) {
-		return jsonResponse({ message: "Unauthorized" }, 401);
+export const pakasirWebhook = httpAction(async (ctx, request) => {
+	const payload = parsePakasirWebhookPayload(await request.json());
+	if (
+		!payload.orderId ||
+		payload.project !== getPakasirProject() ||
+		payload.status !== "completed"
+	) {
+		return jsonResponse({ message: "Ignored" });
 	}
 
-	const payload = parseWebhookPayload(await request.json());
+	const payment = await ctx.runQuery(internal.payments.getByRefId, {
+		refId: payload.orderId,
+	});
+	if (!payment) {
+		return jsonResponse({ message: "Payment not found" });
+	}
+
+	const detail = await fetchPakasirTransactionDetail({
+		amount: payment.amount,
+		refId: payment.refId,
+	});
 	if (
-		!payload.transactionId ||
-		payload.event !== "payment.received" ||
-		payload.status !== "SUCCESS"
+		!detail ||
+		detail.project !== getPakasirProject() ||
+		detail.orderId !== payment.refId ||
+		detail.amount !== payment.amount ||
+		detail.status !== "completed"
 	) {
 		return jsonResponse({ message: "Ignored" });
 	}
@@ -685,8 +1254,10 @@ export const mayarWebhook = httpAction(async (ctx, request) => {
 	const result = await ctx.runMutation(
 		internal.payments.applyReservationPaymentSuccess,
 		{
-			amount: payload.amount,
-			refId: payload.transactionId,
+			amount: detail.amount,
+			completedAt: detail.completedAt,
+			paymentMethod: detail.paymentMethod,
+			refId: detail.orderId,
 		},
 	);
 
@@ -705,25 +1276,27 @@ export const mayarWebhook = httpAction(async (ctx, request) => {
 	return jsonResponse({ message: "Webhook received successfully" });
 });
 
-const MAYAR_TRANSACTIONS_URL =
-	process.env.MAYAR_TRANSACTIONS_URL ??
-	"https://api.mayar.id/hl/v1/transactions";
-
 const paymentListRowValidator = v.object({
 	_creationTime: v.number(),
 	_id: v.id("payments"),
 	amount: v.number(),
 	checkoutUrl: v.optional(v.string()),
+	completedAt: v.optional(v.number()),
 	createdAt: v.number(),
 	currency: v.literal("IDR"),
 	customerEmail: v.optional(v.string()),
 	customerName: v.optional(v.string()),
 	expiresAt: v.optional(v.number()),
+	fee: v.optional(v.number()),
+	paymentMethod: v.optional(v.string()),
+	paymentNumber: v.optional(v.string()),
+	provider: v.optional(paymentProviderValidator),
 	refId: v.string(),
 	status: paymentStatusValidator,
 	tableLabel: v.optional(v.string()),
 	tableZone: v.optional(v.string()),
 	targetId: v.string(),
+	totalPayment: v.optional(v.number()),
 	type: paymentTypeValidator,
 });
 
@@ -774,8 +1347,10 @@ export const listAllPayments = query({
 					return { ...payment };
 				}
 
-				const table = await ctx.db.get(reservation.tableId);
-				const user = await ctx.db.get(reservation.userId);
+				const [table, user] = await Promise.all([
+					ctx.db.get(reservation.tableId),
+					ctx.db.get(reservation.userId),
+				]);
 
 				return {
 					...payment,
@@ -794,78 +1369,12 @@ export const listAllPayments = query({
 	},
 });
 
-function extractMayarTransactionRows(body: unknown): unknown[] {
-	if (!isObject(body)) {
-		return [];
-	}
-
-	if (Array.isArray(body.data)) {
-		return body.data;
-	}
-
-	if (Array.isArray(body.transactions)) {
-		return body.transactions;
-	}
-
-	return [];
-}
-
-function transactionMatchesRef(item: unknown, refId: string): boolean {
-	if (!isObject(item)) {
-		return false;
-	}
-
-	const candidates: string[] = [];
-	if (typeof item.id === "string") {
-		candidates.push(item.id);
-	}
-	if (typeof item.paymentLinkTransactionId === "string") {
-		candidates.push(item.paymentLinkTransactionId);
-	}
-
-	const nested = item.paymentLinkTransaction;
-	if (isObject(nested) && typeof nested.id === "string") {
-		candidates.push(nested.id);
-	}
-
-	return candidates.some((c) => c === refId);
-}
-
-function getTransactionStatus(item: unknown): string | undefined {
-	if (!isObject(item)) {
-		return undefined;
-	}
-	return typeof item.status === "string" ? item.status : undefined;
-}
-
 export const syncReservationPaymentStatus = action({
 	args: {
 		refId: v.string(),
 	},
-	returns: v.object({
-		apiStatus: v.optional(v.string()),
-		result: v.union(
-			v.literal("ignored"),
-			v.literal("paid"),
-			v.literal("pending"),
-			v.literal("not_found_in_mayar"),
-			v.literal("not_pending_locally"),
-			v.literal("wrong_type"),
-		),
-	}),
-	handler: async (
-		ctx,
-		args,
-	): Promise<{
-		apiStatus?: string;
-		result:
-			| "ignored"
-			| "not_found_in_mayar"
-			| "not_pending_locally"
-			| "paid"
-			| "pending"
-			| "wrong_type";
-	}> => {
+	returns: syncReservationPaymentResultValidator,
+	handler: async (ctx, args) => {
 		const user = await ctx.runQuery(api.users.getMe, {});
 		if (!user || user.role !== "admin") {
 			throw new Error("Unauthorized");
@@ -887,84 +1396,53 @@ export const syncReservationPaymentStatus = action({
 			return { result: "not_pending_locally" as const };
 		}
 
-		const apiKey = getMayarApiKey();
-		let page = 1;
-		const pageSize = 50;
-		let matched: { item: unknown; status: string | undefined } | null = null;
+		const detail = await fetchPakasirTransactionDetail({
+			amount: payment.amount,
+			refId: payment.refId,
+		});
 
-		for (;;) {
-			const url = new URL(MAYAR_TRANSACTIONS_URL);
-			url.searchParams.set("page", String(page));
-			url.searchParams.set("pageSize", String(pageSize));
-
-			const response = await fetch(url.toString(), {
-				headers: {
-					Authorization: `Bearer ${apiKey}`,
-				},
-			});
-
-			if (!response.ok) {
-				const text = await response.text();
-				throw new Error(
-					`Mayar transactions request failed: ${response.status} ${text || response.statusText}`,
-				);
-			}
-
-			const body: unknown = await response.json();
-			const rows = extractMayarTransactionRows(body);
-
-			for (const item of rows) {
-				if (transactionMatchesRef(item, args.refId)) {
-					matched = {
-						item,
-						status: getTransactionStatus(item),
-					};
-					break;
-				}
-			}
-
-			if (matched) {
-				break;
-			}
-
-			const bodyObj = isObject(body) ? body : {};
-			const hasMore =
-				typeof bodyObj.hasMore === "boolean" ? bodyObj.hasMore : false;
-			const pageCount =
-				typeof bodyObj.pageCount === "number" ? bodyObj.pageCount : page;
-
-			if (!hasMore || page >= pageCount || rows.length === 0) {
-				break;
-			}
-
-			page += 1;
+		if (!detail) {
+			return {
+				result: "not_found_in_pakasir" as const,
+			};
 		}
 
-		if (!matched || matched.status !== "SUCCESS") {
+		if (
+			detail.project !== getPakasirProject() ||
+			detail.orderId !== payment.refId ||
+			detail.amount !== payment.amount
+		) {
 			return {
-				apiStatus: matched?.status,
-				result:
-					matched === null
-						? ("not_found_in_mayar" as const)
-						: ("pending" as const),
+				apiStatus: detail.status,
+				result: "mismatch" as const,
+			};
+		}
+
+		if (detail.status !== "completed") {
+			return {
+				apiStatus: detail.status,
+				result: "pending" as const,
 			};
 		}
 
 		const applyResult = await ctx.runMutation(
 			internal.payments.applyReservationPaymentSuccess,
 			{
-				refId: args.refId,
+				amount: detail.amount,
+				completedAt: detail.completedAt,
+				paymentMethod: detail.paymentMethod,
+				refId: detail.orderId,
 			},
 		);
 
 		if (applyResult === "already_paid" || applyResult === "applied") {
-			return { apiStatus: "SUCCESS", result: "paid" as const };
+			return { apiStatus: "completed", result: "paid" as const };
 		}
 
 		if (applyResult === "ignored") {
-			return { apiStatus: "SUCCESS", result: "ignored" as const };
+			return { apiStatus: "completed", result: "ignored" as const };
 		}
 
-		return { apiStatus: matched.status, result: "pending" as const };
+		return { apiStatus: detail.status, result: "pending" as const };
 	},
 });

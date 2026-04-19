@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 
+import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalMutation, mutation, query } from "./_generated/server";
 import { requireAuth } from "./lib/auth";
@@ -146,14 +147,10 @@ export const notifyAdminsOfCancellationRefund = internalMutation({
 			ctx.db.get(reservation.userId),
 		]);
 
-		const targetKey = String(args.reservationId);
-		const payment = await ctx.db
-			.query("payments")
-			.withIndex("by_targetId", (q) => q.eq("targetId", targetKey))
-			.filter((q) => q.eq(q.field("type"), "reservation"))
-			.first();
-
-		const amount = payment?.amount ?? 0;
+		const payment = await ctx.runQuery(internal.payments.getReservationPayment, {
+			reservationId: args.reservationId,
+		});
+		const amount = payment?.totalPayment ?? payment?.amount ?? 0;
 		const customerName = customer?.name ?? "Pelanggan";
 		const tableLabel = table?.label ?? "?";
 
@@ -163,7 +160,7 @@ export const notifyAdminsOfCancellationRefund = internalMutation({
 			timeZone: "Asia/Jakarta",
 		}).format(new Date(reservation.startTime));
 
-		const message = `${customerName} membatalkan reservasi Meja ${tableLabel} (${dateLine}). Jumlah: ${formatIdr(amount)}. Proses refund di dashboard Mayar.id.`;
+		const message = `${customerName} membatalkan reservasi Meja ${tableLabel} (${dateLine}). Jumlah: ${formatIdr(amount)}. Proses refund di dashboard Pakasir.`;
 
 		const admins = await ctx.db
 			.query("users")

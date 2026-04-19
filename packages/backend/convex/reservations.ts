@@ -131,8 +131,10 @@ function isStaffOrAdmin(role: "customer" | "staff" | "admin"): boolean {
 }
 
 function toReservationWithTable(table: AppTable, reservation: AppReservation) {
+	const { checkoutLockExpiresAt: _checkoutLockExpiresAt, checkoutLockToken: _checkoutLockToken, ...publicReservation } =
+		reservation;
 	return {
-		...reservation,
+		...publicReservation,
 		table,
 	};
 }
@@ -142,8 +144,10 @@ function toReservationBoardItem(
 	reservation: AppReservation,
 	user: AppUser | null,
 ) {
+	const { checkoutLockExpiresAt: _checkoutLockExpiresAt, checkoutLockToken: _checkoutLockToken, ...publicReservation } =
+		reservation;
 	return {
-		...reservation,
+		...publicReservation,
 		customer: {
 			email: user?.email ?? "",
 			name: user?.name ?? "Unknown customer",
@@ -555,7 +559,11 @@ export const expirePendingReservation = internalMutation({
 			return null;
 		}
 
-		await ctx.db.patch(reservation._id, { status: "cancelled" });
+	await ctx.db.patch(reservation._id, {
+		checkoutLockExpiresAt: undefined,
+		checkoutLockToken: undefined,
+		status: "cancelled",
+	});
 		return null;
 	},
 });
@@ -578,11 +586,16 @@ export const cancel = mutation({
 			return toReservationWithTable(table, reservation);
 		}
 
-		if (reservation.startTime - Date.now() <= CANCELLATION_CUTOFF_MS) {
+		if (
+			reservation.status !== "pending" &&
+			reservation.startTime - Date.now() <= CANCELLATION_CUTOFF_MS
+		) {
 			throw new Error("Cancellation window passed");
 		}
 
 		await ctx.db.patch(reservation._id, {
+			checkoutLockExpiresAt: undefined,
+			checkoutLockToken: undefined,
 			status: "cancelled",
 		});
 
@@ -664,6 +677,8 @@ export const confirm = internalMutation({
 		}
 
 		await ctx.db.patch(reservation._id, {
+			checkoutLockExpiresAt: undefined,
+			checkoutLockToken: undefined,
 			paymentRef: args.paymentRef,
 			status: "confirmed",
 		});

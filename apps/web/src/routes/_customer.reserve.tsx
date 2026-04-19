@@ -8,7 +8,7 @@ import {
 	CardTitle,
 } from "@campus-cafe/ui/components/card";
 import { useQuery } from "convex/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router";
 import { MapPin, Info } from "lucide-react";
 
@@ -23,7 +23,7 @@ function isValidDateInput(value: string | null): value is string {
 
 export default function ReservePage() {
 	const [searchParams] = useSearchParams();
-	const [referenceTimestamp] = useState(() => Date.now());
+	const [referenceTimestamp, setReferenceTimestamp] = useState(() => Date.now());
 	const tables = useQuery(api.tables.list, { referenceTimestamp });
 	const [selectedTableId, setSelectedTableId] = useState<
 		FloorPlanTable["_id"] | null
@@ -42,6 +42,14 @@ export default function ReservePage() {
 	const eventId = requestedEventId
 		? (requestedEventId as Id<"events">)
 		: undefined;
+
+	useEffect(() => {
+		const updateReferenceTimestamp = () => setReferenceTimestamp(Date.now());
+		updateReferenceTimestamp();
+
+		const interval = window.setInterval(updateReferenceTimestamp, 10_000);
+		return () => window.clearInterval(interval);
+	}, []);
 
 	return (
 		<>
@@ -109,6 +117,8 @@ export default function ReservePage() {
 								<div className="mt-2 rounded-xl bg-background p-4 text-xs leading-relaxed text-muted-foreground shadow-sm">
 									Current floor status is informational. The exact reservation
 									slot is checked after you choose date, time, and duration.
+									Checkout now happens in-app with a QRIS countdown, so unpaid
+									holds can expire automatically.
 								</div>
 							</CardContent>
 						</Card>

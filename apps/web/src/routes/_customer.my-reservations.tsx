@@ -8,11 +8,13 @@ import {
 	CardTitle,
 } from "@campus-cafe/ui/components/card";
 import { useAction, useMutation, useQuery } from "convex/react";
-import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import ConfirmDialog from "@/components/confirm-dialog";
+import ReservationPaymentSheet, {
+	type ReservationCheckoutSession,
+} from "@/components/reserve/reservation-payment-sheet";
 
 type ReservationTab = "past" | "upcoming";
 
@@ -47,11 +49,11 @@ function getStatusLabel(status: "pending" | "confirmed" | "cancelled") {
 
 export default function MyReservationsPage() {
 	const reservations = useQuery(api.reservations.listByUser);
-	const user = useQuery(api.users.getMe);
 	const cancelReservation = useMutation(api.reservations.cancel);
 	const startReservationCheckout = useAction(api.payments.startReservationCheckout);
-	const [searchParams, setSearchParams] = useSearchParams();
 	const [activeTab, setActiveTab] = useState<ReservationTab>("upcoming");
+	const [activeCheckout, setActiveCheckout] =
+		useState<ReservationCheckoutSession | null>(null);
 	const [pendingReservationId, setPendingReservationId] = useState<
 		string | null
 	>(null);
@@ -61,20 +63,6 @@ export default function MyReservationsPage() {
 	const [confirmingReservationId, setConfirmingReservationId] = useState<
 		string | null
 	>(null);
-
-	useEffect(() => {
-		if (searchParams.get("success") !== "true") {
-			return;
-		}
-
-		toast.success(
-			"Reservation created. We will update the status as soon as payment is confirmed.",
-		);
-
-		const nextParams = new URLSearchParams(searchParams);
-		nextParams.delete("success");
-		setSearchParams(nextParams, { replace: true });
-	}, [searchParams, setSearchParams]);
 
 	const groupedReservations = useMemo(() => {
 		const now = Date.now();
@@ -96,7 +84,6 @@ export default function MyReservationsPage() {
 		activeTab === "upcoming"
 			? groupedReservations.upcoming
 			: groupedReservations.past;
-	const canCreateNewPaymentLink = Boolean(user?.phone);
 	const reservationPendingCancellation =
 		confirmingReservationId !== null
 			? (reservations?.find(
@@ -178,47 +165,35 @@ export default function MyReservationsPage() {
 									{reservation.eventId ? (
 										<div>Linked event reservation</div>
 									) : null}
-									{activeTab === "upcoming" &&
-									reservation.status === "pending" ? (
+									{reservation.status === "pending" ? (
 										<div className="flex flex-wrap gap-2 pt-2">
-											{canCreateNewPaymentLink ? (
-												<Button
-													disabled={
-														pendingCheckoutReservationId === reservation._id
+											<Button
+												disabled={pendingCheckoutReservationId === reservation._id}
+												size="sm"
+												variant="outline"
+												onClick={async () => {
+													setPendingCheckoutReservationId(reservation._id);
+													try {
+														const checkout = await startReservationCheckout({
+															mode: "resume",
+															reservationId: reservation._id,
+														});
+														setActiveCheckout(checkout);
+													} catch (error) {
+														toast.error(
+															error instanceof Error
+																? error.message
+																: "Failed to continue payment",
+														);
+													} finally {
+														setPendingCheckoutReservationId(null);
 													}
-													size="sm"
-													variant="outline"
-													onClick={async () => {
-														setPendingCheckoutReservationId(reservation._id);
-														try {
-															const checkout = await startReservationCheckout({
-																mode: "resume",
-																reservationId: reservation._id,
-															});
-															window.location.href = checkout.paymentUrl;
-														} catch (error) {
-															toast.error(
-																error instanceof Error
-																	? error.message
-																	: "Failed to continue payment",
-															);
-															setPendingCheckoutReservationId(null);
-														}
-													}}
-												>
-													{pendingCheckoutReservationId === reservation._id
-														? "Preparing payment..."
-														: "Continue payment"}
-												</Button>
-											) : (
-												<Button
-													render={<Link to="/profile" />}
-													size="sm"
-													variant="outline"
-												>
-													Add phone to continue payment
-												</Button>
-											)}
+												}}
+											>
+												{pendingCheckoutReservationId === reservation._id
+													? "Preparing QRIS..."
+													: "Continue payment"}
+											</Button>
 										</div>
 									) : null}
 									{activeTab === "upcoming" &&
@@ -300,6 +275,18 @@ export default function MyReservationsPage() {
 					}
 				}}
 			/>
+
+			{activeCheckout ? (
+				<ReservationPaymentSheet
+					checkout={activeCheckout}
+					open={activeCheckout !== null}
+					onOpenChange={(open) => {
+						if (!open) {
+							setActiveCheckout(null);
+						}
+					}}
+				/>
+			) : null}
 		</>
 	);
 }

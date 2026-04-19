@@ -35,6 +35,8 @@ const orderType = v.union(v.literal("reserved"), v.literal("walkin"));
 
 const paymentType = v.union(v.literal("reservation"), v.literal("food_order"));
 
+const paymentProvider = v.union(v.literal("mayar"), v.literal("pakasir"));
+
 const paymentStatus = v.union(
 	v.literal("pending"),
 	v.literal("paid"),
@@ -81,6 +83,8 @@ export default defineSchema({
 		.index("by_zone", ["zone"]),
 
 	reservations: defineTable({
+		checkoutLockExpiresAt: v.optional(v.number()),
+		checkoutLockToken: v.optional(v.string()),
 		confirmationCode: v.optional(v.string()),
 		createdAt: v.number(),
 		durationHours,
@@ -158,16 +162,23 @@ export default defineSchema({
 	payments: defineTable({
 		amount: v.number(),
 		checkoutUrl: v.optional(v.string()),
+		completedAt: v.optional(v.number()),
 		createdAt: v.number(),
 		currency: v.literal("IDR"),
 		expiresAt: v.optional(v.number()),
+		fee: v.optional(v.number()),
+		paymentMethod: v.optional(v.string()),
+		paymentNumber: v.optional(v.string()),
+		provider: v.optional(paymentProvider),
 		refId: v.string(),
 		status: paymentStatus,
 		targetId: v.string(),
+		totalPayment: v.optional(v.number()),
 		type: paymentType,
 	})
 		.index("by_refId", ["refId"])
-		.index("by_targetId", ["targetId"]),
+		.index("by_targetId", ["targetId"])
+		.index("by_targetId_and_type", ["targetId", "type"]),
 
 	notifications: defineTable({
 		createdAt: v.number(),

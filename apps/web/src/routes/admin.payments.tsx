@@ -73,6 +73,10 @@ function formatType(type: Doc<"payments">["type"]) {
 	return type === "reservation" ? "Reservasi" : "Pesanan makanan";
 }
 
+function getDisplayAmount(payment: Doc<"payments">) {
+	return payment.totalPayment ?? payment.amount;
+}
+
 export default function AdminPaymentsPage() {
 	const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
 	const [syncingRefId, setSyncingRefId] = useState<string | null>(null);
@@ -98,17 +102,22 @@ export default function AdminPaymentsPage() {
 						break;
 					case "pending":
 						toast.message(
-							`Status Mayar: ${out.apiStatus ?? "belum SUCCESS"}. Coba lagi nanti.`,
+							`Status Pakasir: ${out.apiStatus ?? "belum completed"}. Coba lagi nanti.`,
 						);
 						break;
 					case "ignored":
 						toast.warning(
-							"Pembayaran berhasil di Mayar, tetapi reservasi lokal sudah tidak pending. Periksa apakah perlu refund manual.",
+							"Pembayaran sudah terdeteksi di Pakasir, tetapi reservasi lokal sudah tidak pending. Periksa apakah perlu refund manual.",
 						);
 						break;
-					case "not_found_in_mayar":
+					case "not_found_in_pakasir":
 						toast.warning(
-							"Transaksi tidak ditemukan di daftar Mayar (halaman API). Periksa ref ID atau coba lagi.",
+							"Transaksi tidak ditemukan di Pakasir. Periksa ref ID, amount, atau coba lagi nanti.",
+						);
+						break;
+					case "mismatch":
+						toast.error(
+							"Detail transaksi dari Pakasir tidak cocok dengan data lokal. Reservasi tidak diubah.",
 						);
 						break;
 					case "not_pending_locally":
@@ -148,8 +157,8 @@ export default function AdminPaymentsPage() {
 			<div>
 				<h1 className="font-semibold text-2xl tracking-tight">Pembayaran</h1>
 				<p className="text-muted-foreground text-sm">
-					Daftar semua pembayaran. Sinkron manual jika webhook Mayar tidak
-					terkirim.
+					Daftar semua pembayaran. Sinkron manual jika webhook Pakasir belum
+					terkirim atau perlu verifikasi ulang.
 				</p>
 			</div>
 
@@ -236,7 +245,7 @@ export default function AdminPaymentsPage() {
 												)}
 											</TableCell>
 											<TableCell className="whitespace-nowrap">
-												{idrFormatter.format(row.amount)}
+												{idrFormatter.format(getDisplayAmount(row))}
 											</TableCell>
 											<TableCell>
 												<button
@@ -308,7 +317,7 @@ export default function AdminPaymentsPage() {
 									<div className="text-sm">
 										<p className="font-medium">{formatType(row.type)}</p>
 										<p className="text-muted-foreground">
-											{idrFormatter.format(row.amount)}
+											{idrFormatter.format(getDisplayAmount(row))}
 										</p>
 										{row.type === "reservation" ? (
 											<p className="mt-1">

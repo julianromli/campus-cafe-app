@@ -68,7 +68,8 @@ afterEach(() => {
 });
 
 beforeEach(() => {
-	process.env.MAYAR_API_KEY = "test-key";
+	process.env.PAKASIR_API_KEY = "test-key";
+	process.env.PAKASIR_PROJECT = "campus-cafe";
 	process.env.RESERVATION_PRICE_PER_HOUR = "50000";
 	process.env.SITE_URL = "https://campus-cafe.test";
 });
@@ -185,7 +186,7 @@ describe("reservation state machine", () => {
 				startTime: createBusinessTimestamp(1, 10),
 				tableId,
 			}),
-		).rejects.toThrow("Mayar payment creation failed");
+		).rejects.toThrow("Pakasir payment creation failed");
 
 		const reservationStatuses = await t.run(async (ctx) => {
 			return (await ctx.db.query("reservations").collect()).map(
@@ -220,10 +221,14 @@ describe("reservation state machine", () => {
 
 		await t.mutation(internal.payments.recordPendingReservationPayment, {
 			amount: 50000,
-			checkoutUrl: "https://pay.example/txn-1",
 			expiresAt: Date.now() + PENDING_EXPIRY_MS,
+			fee: 1000,
+			paymentMethod: "qris",
+			paymentNumber: "000201010212-test",
+			provider: "pakasir",
 			refId: "txn-1",
 			reservationId: reservation.reservationId,
+			totalPayment: 51000,
 		});
 
 		const firstApply = await t.mutation(
@@ -248,6 +253,361 @@ describe("reservation state machine", () => {
 		expect(secondApply).toBe("already_paid");
 		expect(reservationRecord?.status).toBe("confirmed");
 		expect(reservationRecord?.paymentRef).toBe("txn-1");
+	}, 10000);
+
+	test("cancels active Pakasir checkout and releases the reservation", async () => {
+		const t = createBackendTest();
+		await seedUser(t, {
+			authId: "customer-auth-2",
+			email: "cancel@example.com",
+			name: "Cancel User",
+		});
+		const tableId = await seedTable(t);
+		const asCustomer = t.withIdentity({
+			email: "cancel@example.com",
+			name: "Cancel User",
+			subject: "customer-auth-2",
+		});
+
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockResolvedValueOnce(
+					new Response(
+						JSON.stringify({
+							payment: {
+								amount: 50000,
+								expired_at: new Date(Date.now() + PENDING_EXPIRY_MS).toISOString(),
+								fee: 1000,
+								order_id: "RES-CANCEL-1",
+								payment_method: "qris",
+								payment_number: "000201010212-cancel",
+								project: "campus-cafe",
+								total_payment: 51000,
+							},
+						}),
+						{ status: 200 },
+					),
+				)
+				.mockResolvedValueOnce(
+					new Response(
+						JSON.stringify({
+							transaction: {
+								amount: 50000,
+								order_id: "RES-CANCEL-1",
+								payment_method: "qris",
+								project: "campus-cafe",
+								status: "pending",
+							},
+						}),
+						{ status: 200 },
+					),
+				)
+				.mockResolvedValueOnce(new Response("{}", { status: 200 })),
+		);
+
+		const checkout = await asCustomer.action(api.payments.startReservationCheckout, {
+			durationHours: 1,
+			guestCount: 2,
+			mode: "new",
+			startTime: createBusinessTimestamp(1, 11),
+			tableId,
+		});
+
+		const cancelled = await asCustomer.action(api.payments.cancelReservationCheckout, {
+			reservationId: checkout.reservationId,
+		});
+		const [reservationRecord, paymentRecord] = await t.run(async (ctx) => {
+			return await Promise.all([
+				ctx.db.get(checkout.reservationId),
+				ctx.db
+					.query("payments")
+					.withIndex("by_refId", (query) =>
+						query.eq("refId", checkout.activePayment.refId),
+					)
+					.unique(),
+			]);
+		});
+
+		expect(cancelled.result).toBe("cancelled");
+		expect(reservationRecord?.status).toBe("cancelled");
+		expect(paymentRecord?.status).toBe("failed");
+	});
+
+	test("serializes checkout creation with a reservation-level lock", async () => {
+		const t = createBackendTest();
+		const userId = await seedUser(t, {
+			email: "race@example.com",
+			name: "Race User",
+		});
+		const tableId = await seedTable(t);
+		const reservation = await t.mutation(
+			internal.reservations.createPendingForCheckout,
+			{
+				durationHours: 1,
+				guestCount: 2,
+				startTime: createBusinessTimestamp(1, 15),
+				tableId,
+				userId,
+			},
+		);
+		const firstClaim = await t.mutation(
+			internal.payments.claimReservationCheckoutLock,
+			{
+				referenceTimestamp: Date.now(),
+				reservationId: reservation.reservationId,
+				userId,
+			},
+		);
+		const secondClaim = await t.mutation(
+			internal.payments.claimReservationCheckoutLock,
+			{
+				referenceTimestamp: Date.now(),
+				reservationId: reservation.reservationId,
+				userId,
+			},
+		);
+
+		expect(firstClaim.status).toBe("ready");
+		expect(secondClaim.status).toBe("locked");
+		if (firstClaim.status !== "ready") {
+			throw new Error("Expected first checkout claim to acquire the lock");
+		}
+
+		await t.mutation(internal.payments.recordPendingReservationPayment, {
+			amount: 50000,
+			checkoutLockToken: firstClaim.lockToken,
+			expiresAt: Date.now() + PENDING_EXPIRY_MS,
+			fee: 1000,
+			paymentMethod: "qris",
+			paymentNumber: "000201010212-race",
+			provider: "pakasir",
+			refId: "RES-RACE-1",
+			reservationId: reservation.reservationId,
+			totalPayment: 51000,
+		});
+
+		const activeClaim = await t.mutation(
+			internal.payments.claimReservationCheckoutLock,
+			{
+				reservationId: reservation.reservationId,
+				referenceTimestamp: Date.now(),
+				userId,
+			},
+		);
+
+		expect(activeClaim.status).toBe("active");
+		if (activeClaim.status !== "active") {
+			throw new Error("Expected checkout claim to return an active payment");
+		}
+		expect(activeClaim.activePayment.refId).toBe("RES-RACE-1");
+	});
+
+	test("allows cancelling a pending checkout even inside the normal cutoff window", async () => {
+		const t = createBackendTest();
+		await seedUser(t, {
+			authId: "customer-auth-cutoff",
+			email: "cutoff@example.com",
+			name: "Cutoff User",
+		});
+		const tableId = await seedTable(t);
+		const reservationId = await t.run(async (ctx) => {
+			return await ctx.db.insert("reservations", {
+				createdAt: Date.now(),
+				durationHours: 1,
+				guestCount: 2,
+				startTime: Date.now() + 30 * 60 * 1000,
+				status: "pending",
+				tableId,
+				userId: (await ctx.db
+					.query("users")
+					.withIndex("by_email", (query) => query.eq("email", "cutoff@example.com"))
+					.unique())!._id,
+			});
+		});
+		await t.mutation(internal.payments.recordPendingReservationPayment, {
+			amount: 50000,
+			expiresAt: Date.now() + PENDING_EXPIRY_MS,
+			fee: 1000,
+			paymentMethod: "qris",
+			paymentNumber: "000201010212-cutoff",
+			provider: "pakasir",
+			refId: "RES-CUTOFF-1",
+			reservationId,
+			totalPayment: 51000,
+		});
+		const asCustomer = t.withIdentity({
+			email: "cutoff@example.com",
+			name: "Cutoff User",
+			subject: "customer-auth-cutoff",
+		});
+
+		vi.stubGlobal(
+			"fetch",
+			vi
+				.fn()
+				.mockResolvedValueOnce(
+					new Response(
+						JSON.stringify({
+							transaction: {
+								amount: 50000,
+								order_id: "RES-CUTOFF-1",
+								payment_method: "qris",
+								project: "campus-cafe",
+								status: "pending",
+							},
+						}),
+						{ status: 200 },
+					),
+				)
+				.mockResolvedValueOnce(new Response("{}", { status: 200 })),
+		);
+
+		const result = await asCustomer.action(api.payments.cancelReservationCheckout, {
+			reservationId,
+		});
+		const [reservationRecord, paymentRecord] = await t.run(async (ctx) => {
+			return await Promise.all([
+				ctx.db.get(reservationId),
+				ctx.db
+					.query("payments")
+					.withIndex("by_refId", (query) => query.eq("refId", "RES-CUTOFF-1"))
+					.unique(),
+			]);
+		});
+
+		expect(result.result).toBe("cancelled");
+		expect(reservationRecord?.status).toBe("cancelled");
+		expect(paymentRecord?.status).toBe("failed");
+	});
+
+	test("rejects manual sync when Pakasir detail does not match local payment", async () => {
+		const t = createBackendTest();
+		const userId = await seedUser(t, {
+			email: "sync@example.com",
+			name: "Sync User",
+		});
+		await seedUser(t, {
+			authId: "admin-auth-1",
+			email: "admin@example.com",
+			name: "Admin",
+			role: "admin",
+		});
+		const tableId = await seedTable(t);
+		const reservation = await t.mutation(
+			internal.reservations.createPendingForCheckout,
+			{
+				durationHours: 1,
+				guestCount: 2,
+				startTime: createBusinessTimestamp(1, 16),
+				tableId,
+				userId,
+			},
+		);
+		await t.mutation(internal.payments.recordPendingReservationPayment, {
+			amount: 50000,
+			expiresAt: Date.now() + PENDING_EXPIRY_MS,
+			fee: 1000,
+			paymentMethod: "qris",
+			paymentNumber: "000201010212-sync",
+			provider: "pakasir",
+			refId: "RES-SYNC-1",
+			reservationId: reservation.reservationId,
+			totalPayment: 51000,
+		});
+		const asAdmin = t.withIdentity({
+			email: "admin@example.com",
+			name: "Admin",
+			subject: "admin-auth-1",
+		});
+
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () =>
+				new Response(
+					JSON.stringify({
+						transaction: {
+							amount: 51000,
+							order_id: "RES-SYNC-1",
+							payment_method: "qris",
+							project: "campus-cafe",
+							status: "completed",
+						},
+					}),
+					{ status: 200 },
+				),
+			),
+		);
+
+		const syncResult = await asAdmin.action(api.payments.syncReservationPaymentStatus, {
+			refId: "RES-SYNC-1",
+		});
+		const reservationRecord = await t.run(async (ctx) => {
+			return await ctx.db.get(reservation.reservationId);
+		});
+
+		expect(syncResult.result).toBe("mismatch");
+		expect(reservationRecord?.status).toBe("pending");
+	});
+
+	test("selects the payment referenced by reservation.paymentRef for summaries", async () => {
+		const t = createBackendTest();
+		const userId = await seedUser(t, {
+			email: "summary@example.com",
+			name: "Summary User",
+		});
+		const tableId = await seedTable(t);
+		const reservationId = await t.run(async (ctx) => {
+			return await ctx.db.insert("reservations", {
+				createdAt: Date.now(),
+				durationHours: 1,
+				guestCount: 2,
+				paymentRef: "RES-PAID-2",
+				startTime: createBusinessTimestamp(1, 17),
+				status: "confirmed",
+				tableId,
+				userId,
+			});
+		});
+		await t.run(async (ctx) => {
+			await ctx.db.insert("payments", {
+				amount: 50000,
+				createdAt: Date.now() - 1000,
+				currency: "IDR",
+				fee: 1000,
+				paymentMethod: "qris",
+				paymentNumber: "000201010212-old",
+				provider: "pakasir",
+				refId: "RES-PAID-1",
+				status: "failed",
+				targetId: reservationId,
+				totalPayment: 51000,
+				type: "reservation",
+			});
+			await ctx.db.insert("payments", {
+				amount: 60000,
+				completedAt: Date.now(),
+				createdAt: Date.now(),
+				currency: "IDR",
+				fee: 2000,
+				paymentMethod: "qris",
+				paymentNumber: "000201010212-paid",
+				provider: "pakasir",
+				refId: "RES-PAID-2",
+				status: "paid",
+				targetId: reservationId,
+				totalPayment: 62000,
+				type: "reservation",
+			});
+		});
+
+		const payment = await t.query(internal.payments.getReservationPayment, {
+			reservationId,
+		});
+
+		expect(payment?.refId).toBe("RES-PAID-2");
+		expect(payment?.totalPayment).toBe(62000);
 	});
 
 	test("derives table status from active confirmed reservations without locking the table early", async () => {
