@@ -6,6 +6,7 @@ import {
 	AlertTitle,
 } from "@campus-cafe/ui/components/alert";
 import { Button } from "@campus-cafe/ui/components/button";
+import { Calendar } from "@campus-cafe/ui/components/calendar";
 import {
 	Field,
 	FieldDescription,
@@ -14,6 +15,18 @@ import {
 } from "@campus-cafe/ui/components/field";
 import { Input } from "@campus-cafe/ui/components/input";
 import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@campus-cafe/ui/components/popover";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@campus-cafe/ui/components/select";
+import {
 	Sheet,
 	SheetContent,
 	SheetDescription,
@@ -21,6 +34,7 @@ import {
 	SheetTitle,
 } from "@campus-cafe/ui/components/sheet";
 import { useAction, useQuery } from "convex/react";
+import { CalendarDays } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -64,6 +78,95 @@ function isValidDateInput(value: string | undefined): value is string {
 	return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
 }
 
+function dateFromYmdLocal(ymd: string): Date {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+	if (!match) {
+		return new Date(NaN);
+	}
+
+	const year = Number(match[1]);
+	const month = Number(match[2]);
+	const day = Number(match[3]);
+	return new Date(year, month - 1, day);
+}
+
+function startOfLocalDayMs(d: Date): number {
+	return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+function formatReservationDateLabel(ymd: string): string {
+	const parsed = dateFromYmdLocal(ymd);
+	if (Number.isNaN(parsed.getTime())) {
+		return ymd;
+	}
+
+	return new Intl.DateTimeFormat("id-ID", {
+		day: "2-digit",
+		month: "short",
+		year: "numeric",
+	}).format(parsed);
+}
+
+function clampDateInput(value: string, minDate: string, maxDate: string): string {
+	if (value < minDate) {
+		return minDate;
+	}
+
+	if (value > maxDate) {
+		return maxDate;
+	}
+
+	return value;
+}
+
+function getDefaultReservationSelection(args: {
+	initialDate?: string;
+	maxDate: string;
+	minDate: string;
+	now?: Date;
+}): {
+	date: string;
+	startTime: string;
+} {
+	const now = args.now ?? new Date();
+	const firstHourOption = hourOptions[0] ?? "10:00";
+	const requestedDate = isValidDateInput(args.initialDate)
+		? clampDateInput(args.initialDate, args.minDate, args.maxDate)
+		: args.minDate;
+
+	if (requestedDate !== args.minDate) {
+		return {
+			date: requestedDate,
+			startTime: firstHourOption,
+		};
+	}
+
+	if (now.getHours() < 10) {
+		return {
+			date: requestedDate,
+			startTime: firstHourOption,
+		};
+	}
+
+	const nextHour = now.getHours() + 1;
+	if (nextHour <= 21) {
+		return {
+			date: requestedDate,
+			startTime: `${String(nextHour).padStart(2, "0")}:00`,
+		};
+	}
+
+	const nextDate = clampDateInput(
+		toDateInputValue(new Date(now.getTime() + 24 * 60 * 60 * 1000)),
+		args.minDate,
+		args.maxDate,
+	);
+	return {
+		date: nextDate,
+		startTime: firstHourOption,
+	};
+}
+
 export default function ReservationFormSheet({
 	eventId,
 	initialDate,
@@ -76,15 +179,18 @@ export default function ReservationFormSheet({
 	const user = useQuery(api.users.getMe);
 	const minDate = useMemo(() => getMinDate(), []);
 	const maxDate = useMemo(() => getMaxDate(), []);
+	const defaultSelection = useMemo(
+		() => getDefaultReservationSelection({ initialDate, maxDate, minDate }),
+		[initialDate, maxDate, minDate],
+	);
 
 	const [checkout, setCheckout] = useState<ReservationCheckoutSession | null>(null);
-	const [date, setDate] = useState(
-		isValidDateInput(initialDate) ? initialDate : minDate,
-	);
-	const [startTime, setStartTime] = useState(hourOptions[0] ?? "10:00");
+	const [date, setDate] = useState(defaultSelection.date);
+	const [startTime, setStartTime] = useState(defaultSelection.startTime);
 	const [durationHours, setDurationHours] = useState<DurationHours>(1);
 	const [guestCount, setGuestCount] = useState("1");
 	const [submitting, setSubmitting] = useState(false);
+	const [datePickerOpen, setDatePickerOpen] = useState(false);
 
 	useEffect(() => {
 		if (!open) {
@@ -92,11 +198,16 @@ export default function ReservationFormSheet({
 			setSubmitting(false);
 		}
 
-		setDate(isValidDateInput(initialDate) ? initialDate : minDate);
-		setStartTime(hourOptions[0] ?? "10:00");
+		const nextSelection = getDefaultReservationSelection({
+			initialDate,
+			maxDate,
+			minDate,
+		});
+		setDate(nextSelection.date);
+		setStartTime(nextSelection.startTime);
 		setDurationHours(1);
 		setGuestCount("1");
-	}, [initialDate, minDate, open]);
+	}, [initialDate, maxDate, minDate, open]);
 
 	useEffect(() => {
 		if (!table) {
@@ -104,7 +215,7 @@ export default function ReservationFormSheet({
 		}
 
 		setGuestCount("1");
-	}, [table]);
+	}, [table?._id]);
 
 	useEffect(() => {
 		if (!open) {
@@ -130,17 +241,32 @@ export default function ReservationFormSheet({
 		const parsed = new Date(`${date}T${startTime}:00`).getTime();
 		return Number.isFinite(parsed) ? parsed : null;
 	}, [date, startTime]);
-	const availability = useQuery(
-		api.reservations.checkAvailability,
-		table && startTimestamp !== null
+	const selectedCalendarDate = useMemo(() => {
+		const parsed = dateFromYmdLocal(date);
+		return Number.isNaN(parsed.getTime()) ? undefined : parsed;
+	}, [date]);
+	const minSelectableMs = useMemo(
+		() => startOfLocalDayMs(dateFromYmdLocal(minDate)),
+		[minDate],
+	);
+	const maxSelectableMs = useMemo(
+		() => startOfLocalDayMs(dateFromYmdLocal(maxDate)),
+		[maxDate],
+	);
+	const availabilityArgs =
+		table && startTimestamp !== null && startTimestamp > referenceTimestamp
 			? {
 					durationHours,
 					referenceTimestamp,
 					startTime: startTimestamp,
 					tableId: table._id,
 				}
-			: "skip",
+			: "skip";
+	const availability = useQuery(
+		api.reservations.checkAvailability,
+		availabilityArgs,
 	);
+	const shouldCheckAvailability = availabilityArgs !== "skip";
 
 	const reservationSummary = table
 		? `${table.label} • ${table.zone} • ${table.capacity} seats`
@@ -195,32 +321,81 @@ export default function ReservationFormSheet({
 						<FieldGroup className="gap-5">
 							<Field>
 								<FieldLabel htmlFor="reservation-date">Date</FieldLabel>
-								<Input
-									id="reservation-date"
-									max={maxDate}
-									min={minDate}
-									type="date"
-									value={date}
-									onChange={(event) => setDate(event.target.value)}
-								/>
+								<Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+									<PopoverTrigger
+										nativeButton={false}
+										render={
+											<Button
+												type="button"
+												id="reservation-date"
+												variant="outline"
+												aria-expanded={datePickerOpen}
+												className="h-9 w-full min-w-0 justify-between rounded-3xl border border-transparent bg-input/50 px-3 py-1 font-normal text-base text-foreground shadow-none hover:bg-input/60 md:text-sm"
+											>
+												{isValidDateInput(date) ? (
+													formatReservationDateLabel(date)
+												) : (
+													<span className="text-muted-foreground">
+														Pilih tanggal
+													</span>
+												)}
+												<CalendarDays data-icon="inline-end" />
+											</Button>
+										}
+									/>
+									<PopoverContent className="w-auto p-0" align="start">
+										<Calendar
+											mode="single"
+											selected={selectedCalendarDate}
+											defaultMonth={selectedCalendarDate}
+											disabled={(day) => {
+												const t = startOfLocalDayMs(day);
+												return t < minSelectableMs || t > maxSelectableMs;
+											}}
+											onSelect={(nextDate) => {
+												if (!nextDate) {
+													return;
+												}
+
+												setDate(toDateInputValue(nextDate));
+												setDatePickerOpen(false);
+											}}
+											initialFocus
+										/>
+									</PopoverContent>
+								</Popover>
 							</Field>
 
 							<Field>
 								<FieldLabel htmlFor="reservation-start-time">
 									Start time
 								</FieldLabel>
-								<select
-									id="reservation-start-time"
-									className="min-h-11 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+								<Select
 									value={startTime}
-									onChange={(event) => setStartTime(event.target.value)}
+									onValueChange={(next) => {
+										if (typeof next === "string") {
+											setStartTime(next);
+										}
+									}}
+									modal={false}
 								>
-									{hourOptions.map((option) => (
-										<option key={option} value={option}>
-											{option}
-										</option>
-									))}
-								</select>
+									<SelectTrigger
+										id="reservation-start-time"
+										className="h-11 w-full min-h-11 min-w-0 justify-between rounded-3xl border border-transparent bg-input/50 px-3 text-base font-normal shadow-none hover:bg-input/60 data-[size=default]:h-11 md:text-sm [&_svg]:text-muted-foreground"
+									>
+										<SelectValue placeholder="Pilih jam" />
+									</SelectTrigger>
+									<SelectContent
+										align="start"
+										className="rounded-3xl ring-1 ring-foreground/5 dark:ring-foreground/10"
+									>
+										{hourOptions.map((option) => (
+											<SelectItem key={option} value={option}>
+												{option}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
 							</Field>
 
 							<Field>
@@ -274,7 +449,7 @@ export default function ReservationFormSheet({
 									Meja ini masih tersedia untuk jadwal reservasi yang kamu pilih.
 								</AlertDescription>
 							</Alert>
-						) : table && startTimestamp !== null ? (
+						) : shouldCheckAvailability ? (
 							<Alert>
 								<AlertTitle>Mengecek slot</AlertTitle>
 								<AlertDescription>

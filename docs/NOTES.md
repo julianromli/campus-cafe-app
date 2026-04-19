@@ -66,13 +66,15 @@ npx convex run seed:seedDemoData '{"secret":"ganti-dengan-string-acak"}'
 
 Schema validasi ada di `packages/env/src/web.ts`. Web memakai Vite: variabel yang **dibaca aplikasi** harus diawali `VITE_`.
 
-| Variabel | Wajib? | Fungsi |
-| -------- | ------ | ------ |
-| `VITE_CONVEX_URL` | Ya | URL deployment Convex (`https://…convex.cloud`) — `ConvexReactClient` |
-| `VITE_CONVEX_SITE_URL` | Ya | Origin Convex untuk HTTP/actions (`https://…convex.site`) — Better Auth client (`baseURL`) |
-| `VITE_GOOGLE_CLIENT_ID` | Tidak | Jika diisi, tombol sign-in Google di `/sign-in` aktif |
 
-**Yang tidak dipakai runtime frontend:** `BETTER_AUTH_SECRET`, `PAKASIR_*`, `RESEND_*`, dan secret lain untuk backend — itu untuk [Convex](#environment--convex-deployment-backend), jangan mengandalkan mereka di kode client.
+| Variabel                | Wajib? | Fungsi                                                                                     |
+| ----------------------- | ------ | ------------------------------------------------------------------------------------------ |
+| `VITE_CONVEX_URL`       | Ya     | URL deployment Convex (`https://…convex.cloud`) — `ConvexReactClient`                      |
+| `VITE_CONVEX_SITE_URL`  | Ya     | Origin Convex untuk HTTP/actions (`https://…convex.site`) — Better Auth client (`baseURL`) |
+| `VITE_GOOGLE_CLIENT_ID` | Tidak  | Jika diisi, tombol sign-in Google di `/sign-in` aktif                                      |
+
+
+**Yang tidak dipakai runtime frontend:** `BETTER_AUTH_SECRET`, `PAKASIR_`*, `RESEND_*`, dan secret lain untuk backend — itu untuk [Convex](#environment--convex-deployment-backend), jangan mengandalkan mereka di kode client.
 
 Salin `VITE_CONVEX_URL` dan `VITE_CONVEX_SITE_URL` dari output `bun run dev:setup` / `packages/backend/.env.local` (nilai `CONVEX_URL` → `VITE_CONVEX_URL`, `CONVEX_SITE_URL` → `VITE_CONVEX_SITE_URL`).
 
@@ -80,28 +82,32 @@ Salin `VITE_CONVEX_URL` dan `VITE_CONVEX_SITE_URL` dari output `bun run dev:setu
 
 ## Environment — Lokal Convex CLI (`packages/backend/.env.local`)
 
-File ini dipakai **`npx convex dev`** (deployment dev, codegen), bukan untuk bundle `apps/web`.
+File ini dipakai `**npx convex dev`** (deployment dev, codegen), bukan untuk bundle `apps/web`.
 
-| Variabel | Fungsi |
-| -------- | ------ |
+
+| Variabel            | Fungsi                                                   |
+| ------------------- | -------------------------------------------------------- |
 | `CONVEX_DEPLOYMENT` | Mis. `dev:nama-deployment` — menghubungkan CLI ke proyek |
-| `CONVEX_URL` | `https://…convex.cloud` |
-| `CONVEX_SITE_URL` | `https://…convex.site` |
+| `CONVEX_URL`        | `https://…convex.cloud`                                  |
+| `CONVEX_SITE_URL`   | `https://…convex.site`                                   |
+
 
 ---
 
 ## Environment — Convex (deployment backend)
 
-Set dari **`packages/backend`** dengan `npx convex env set …` (atau dashboard Convex). Di fungsi Convex, akses lewat `process.env.NAMA`.
+Set dari `**packages/backend`** dengan `npx convex env set …` (atau dashboard Convex). Di fungsi Convex, akses lewat `process.env.NAMA`.
 
 ### Auth & URL aplikasi
 
-| Variabel | Wajib? | Fungsi |
-| -------- | ------ | ------ |
-| `SITE_URL` | Ya | Origin app web (`http://localhost:5173` dev / domain prod): trusted origins (`http.ts`), Better Auth, link di email |
-| `BETTER_AUTH_SECRET` | Ya | Secret Better Auth (random 32+ byte, mis. base64) |
-| `GOOGLE_CLIENT_ID` | Tidak | OAuth Google (server) |
-| `GOOGLE_CLIENT_SECRET` | Tidak | OAuth Google (server) |
+
+| Variabel               | Wajib? | Fungsi                                                                                                              |
+| ---------------------- | ------ | ------------------------------------------------------------------------------------------------------------------- |
+| `SITE_URL`             | Ya     | Origin app web (`http://localhost:5173` dev / domain prod): trusted origins (`http.ts`), Better Auth, link di email |
+| `BETTER_AUTH_SECRET`   | Ya     | Secret Better Auth (random 32+ byte, mis. base64)                                                                   |
+| `GOOGLE_CLIENT_ID`     | Tidak  | OAuth Google (server)                                                                                               |
+| `GOOGLE_CLIENT_SECRET` | Tidak  | OAuth Google (server)                                                                                               |
+
 
 Contoh:
 
@@ -115,12 +121,14 @@ npx convex env set SITE_URL http://localhost:5173
 
 ### Email (Resend — komponen `@convex-dev/resend`)
 
-| Variabel | Wajib? | Fungsi |
-| -------- | ------ | ------ |
-| `RESEND_API_KEY` | Ya jika email aktif | API key Resend |
-| `EMAIL_FROM_ADDRESS` | Tidak | Default ada fallback di `emails.ts` |
-| `RESEND_TEST_MODE` | Tidak | Jika bukan `"false"`, mode uji Resend (pembatasan penerima) |
-| `RESEND_WEBHOOK_SECRET` | Tidak | Hanya jika memakai webhook event Resend |
+
+| Variabel                | Wajib?              | Fungsi                                                      |
+| ----------------------- | ------------------- | ----------------------------------------------------------- |
+| `RESEND_API_KEY`        | Ya jika email aktif | API key Resend                                              |
+| `EMAIL_FROM_ADDRESS`    | Tidak               | Default ada fallback di `emails.ts`                         |
+| `RESEND_TEST_MODE`      | Tidak               | Jika bukan `"false"`, mode uji Resend (pembatasan penerima) |
+| `RESEND_WEBHOOK_SECRET` | Tidak               | Hanya jika memakai webhook event Resend                     |
+
 
 ```bash
 npx convex env set RESEND_API_KEY re_...
@@ -133,21 +141,25 @@ npx convex env set RESEND_TEST_MODE false
 
 ### Pakasir QRIS (pembayaran)
 
-| Variabel | Wajib? | Fungsi |
-| -------- | ------ | ------ |
-| `PAKASIR_PROJECT` | Ya | Slug proyek Pakasir untuk create/detail/cancel transaction |
-| `PAKASIR_API_KEY` | Ya | API key Pakasir untuk create/detail/cancel transaction |
-| `PAKASIR_TRANSACTION_CREATE_URL` | Tidak | Override endpoint create QRIS (default: `https://app.pakasir.com/api/transactioncreate/qris`) |
-| `PAKASIR_TRANSACTION_DETAIL_URL` | Tidak | Override endpoint verifikasi status (default: `https://app.pakasir.com/api/transactiondetail`) |
-| `PAKASIR_TRANSACTION_CANCEL_URL` | Tidak | Override endpoint pembatalan transaksi (default: `https://app.pakasir.com/api/transactioncancel`) |
+
+| Variabel                         | Wajib? | Fungsi                                                                                            |
+| -------------------------------- | ------ | ------------------------------------------------------------------------------------------------- |
+| `PAKASIR_PROJECT`                | Ya     | Slug proyek Pakasir untuk create/detail/cancel transaction                                        |
+| `PAKASIR_API_KEY`                | Ya     | API key Pakasir untuk create/detail/cancel transaction                                            |
+| `PAKASIR_TRANSACTION_CREATE_URL` | Tidak  | Override endpoint create QRIS (default: `https://app.pakasir.com/api/transactioncreate/qris`)     |
+| `PAKASIR_TRANSACTION_DETAIL_URL` | Tidak  | Override endpoint verifikasi status (default: `https://app.pakasir.com/api/transactiondetail`)    |
+| `PAKASIR_TRANSACTION_CANCEL_URL` | Tidak  | Override endpoint pembatalan transaksi (default: `https://app.pakasir.com/api/transactioncancel`) |
+
 
 Webhook Pakasir dikirim ke route Convex `POST /pakasir/webhook`. Karena docs publik Pakasir tidak menjelaskan signature secret khusus, backend tidak langsung mempercayai body webhook: callback selalu diverifikasi ulang ke `transactiondetail`, dan reservasi hanya dikonfirmasi saat `project`, `order_id`, `amount`, dan `status === "completed"` cocok dengan data lokal.
 
 ### Harga reservasi
 
-| Variabel | Wajib? | Fungsi |
-| -------- | ------ | ------ |
+
+| Variabel                     | Wajib?               | Fungsi                                                                                                             |
+| ---------------------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `RESERVATION_PRICE_PER_HOUR` | Ya untuk total benar | IDR per jam (integer). Total = `durationHours × RESERVATION_PRICE_PER_HOUR` di `payments.startReservationCheckout` |
+
 
 ### Keamanan
 
@@ -176,65 +188,65 @@ Acuan: `docs/PRD.md` v1.3 dan `docs/BACKLOG.md`. Tandai manual saat verifikasi p
 
 ### Autentikasi & peran
 
-- [ ] Register email/password → verifikasi email → login
-- [ ] Login Google (jika `VITE_GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` di Convex diset)
-- [ ] Baris `users` terbuat di Convex untuk tiap jalur login
-- [ ] Customer tidak mengakses `/admin/*` atau `/staff/*`; staff tidak mengakses route admin kecuali peran admin
+- Register email/password → verifikasi email → login
+- Login Google (jika `VITE_GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` di Convex diset)
+- Baris `users` terbuat di Convex untuk tiap jalur login
+- Customer tidak mengakses `/admin/`* atau `/staff/`*; staff tidak mengakses route admin kecuali peran admin
 
 ### Meja & reservasi
 
-- [ ] Floor plan: hijau bisa klik, merah tidak, meja inactive tidak tampil untuk customer; pembaruan real-time (±2 detik)
-- [ ] Form: tanggal dalam window, jam, durasi 1/2/3 jam, jumlah tamu ≤ kapasitas; konflik slot ditolak (frontend + backend)
-- [ ] Alur bayar: buat reservasi → QRIS tampil inline → webhook Pakasir → verifikasi `transactiondetail` → `confirmed`, email konfirmasi (jika Resend aktif)
-- [ ] Idempotency webhook: permintaan ganda tidak mengubah state dua kali
-- [ ] **Reservasi saya:** tab upcoming/past, kode konfirmasi, pembatalan dalam window; pesan refund; error jika melewati cutoff
-- [ ] Pembatalan reservasi berbayar: notifikasi in-app admin + email pembatalan
+- Floor plan: hijau bisa klik, merah tidak, meja inactive tidak tampil untuk customer; pembaruan real-time (±2 detik)
+- Form: tanggal dalam window, jam, durasi 1/2/3 jam, jumlah tamu ≤ kapasitas; konflik slot ditolak (frontend + backend)
+- Alur bayar: buat reservasi → QRIS tampil inline → webhook Pakasir → verifikasi `transactiondetail` → `confirmed`, email konfirmasi (jika Resend aktif)
+- Idempotency webhook: permintaan ganda tidak mengubah state dua kali
+- **Reservasi saya:** tab upcoming/past, kode konfirmasi, pembatalan dalam window; pesan refund; error jika melewati cutoff
+- Pembatalan reservasi berbayar: notifikasi in-app admin + email pembatalan
 
 ### Staff & admin — operasi meja
 
-- [ ] Papan reservasi: tampilan floor + list; **Mark occupied** / **Release** dengan konfirmasi; tidak ada pelepasan otomatis berbasis waktu
-- [ ] Admin: editor layout (drag, tambah/edit/hapus, toggle inactive)
+- Papan reservasi: tampilan floor + list; **Mark occupied** / **Release** dengan konfirmasi; tidak ada pelepasan otomatis berbasis waktu
+- Admin: editor layout (drag, tambah/edit/hapus, toggle inactive)
 
 ### Event (listing saja, tanpa tiket in-app)
 
-- [ ] Homepage + `/events`: hanya published, belum berakhir; urutan kronologis; kartu ke `/events/:id`
-- [ ] Detail event: CTA ke `externalUrl` (tab baru, `noopener`); opsional link ke `/reserve`
-- [ ] Admin CRUD: draft vs publish; publish membutuhkan URL `https` valid; hapus dengan konfirmasi
+- Homepage + `/events`: hanya published, belum berakhir; urutan kronologis; kartu ke `/events/:id`
+- Detail event: CTA ke `externalUrl` (tab baru, `noopener`); opsional link ke `/reserve`
+- Admin CRUD: draft vs publish; publish membutuhkan URL `https` valid; hapus dengan konfirmasi
 
 ### Menu & QR `/table/:tableId`
 
-- [ ] Halaman cepat; menu terlihat tanpa login; login diminta saat tambah ke keranjang / pesan
-- [ ] Harga dari server; item sold out tidak bisa dipesan; pesanan walk-in vs reservation aktif sesuai logika backend
+- Halaman cepat; menu terlihat tanpa login; login diminta saat tambah ke keranjang / pesan
+- Harga dari server; item sold out tidak bisa dipesan; pesanan walk-in vs reservation aktif sesuai logika backend
 
 ### Pesanan
 
-- [ ] Antrian staff: Pending → Preparing → Ready → completed; pembaruan real-time
-- [ ] **Pesanan saya** + status di halaman meja; sinkron saat staff mengubah status
+- Antrian staff: Pending → Preparing → Ready → completed; pembaruan real-time
+- **Pesanan saya** + status di halaman meja; sinkron saat staff mengubah status
 
 ### Analytics
 
-- [ ] Dashboard admin: ringkasan hari ini + tren 30 hari; timestamp referensi dari client (bukan `Date.now()` di query)
+- Dashboard admin: ringkasan hari ini + tren 30 hari; timestamp referensi dari client (bukan `Date.now()` di query)
 
 ### Profil & manajemen staff
 
-- [ ] Profil: ubah nama, telepon, avatar; persisten setelah refresh
-- [ ] Admin: undangan staff, ubah peran, revoke; email undangan (Resend)
+- Profil: ubah nama, telepon, avatar; persisten setelah refresh
+- Admin: undangan staff, ubah peran, revoke; email undangan (Resend)
 
 ### Pembayaran (admin)
 
-- [ ] Daftar pembayaran; tombol **Sync Status** untuk `pending` saat webhook gagal (butuh `PAKASIR_PROJECT` + `PAKASIR_API_KEY`)
+- Daftar pembayaran; tombol **Sync Status** untuk `pending` saat webhook gagal (butuh `PAKASIR_PROJECT` + `PAKASIR_API_KEY`)
 
 ### Polish
 
-- [ ] Skeleton di halaman yang memuat data Convex
-- [ ] PWA: `manifest.json`, bisa di-install (smoke test)
-- [ ] Responsif ±375px: tidak overflow horizontal, tap target memadai, floor plan bisa di-scroll
+- Skeleton di halaman yang memuat data Convex
+- PWA: `manifest.json`, bisa di-install (smoke test)
+- Responsif ±375px: tidak overflow horizontal, tap target memadai, floor plan bisa di-scroll
 
 ### Non-fungsional / production
 
-- [ ] `SITE_URL` dan redirect OAuth/email cocok dengan domain deployment
-- [ ] Webhook Pakasir masuk ke `/pakasir/webhook` dan hanya mengonfirmasi reservasi setelah `transactiondetail` valid
-- [ ] Opsional: LCP / performa (target PRD: di bawah 2,5 s di koneksi mobile) — Lighthouse atau uji manual
+- `SITE_URL` dan redirect OAuth/email cocok dengan domain deployment
+- Webhook Pakasir masuk ke `/pakasir/webhook` dan hanya mengonfirmasi reservasi setelah `transactiondetail` valid
+- Opsional: LCP / performa (target PRD: di bawah 2,5 s di koneksi mobile) — Lighthouse atau uji manual
 
 ---
 
@@ -243,10 +255,9 @@ Acuan: `docs/PRD.md` v1.3 dan `docs/BACKLOG.md`. Tandai manual saat verifikasi p
 Setelah kode migrasi Pakasir QRIS selesai, ini urutan aksi yang perlu dilakukan di sisi user/operator:
 
 1. Siapkan project Pakasir:
-   - Login ke Pakasir.
-   - Buat / pilih project yang dipakai untuk Campus Cafe.
-   - Salin `slug project` dan `API key`.
-
+  - Login ke Pakasir.
+  - Buat / pilih project yang dipakai untuk Campus Cafe.
+  - Salin `slug project` dan `API key`.
 2. Set environment di Convex backend:
 
 ```bash
@@ -257,30 +268,27 @@ npx convex env set RESERVATION_PRICE_PER_HOUR 50000
 npx convex env set SITE_URL https://your-app-domain.com
 ```
 
-3. Daftarkan webhook di dashboard Pakasir:
-   - Arahkan webhook ke `https://<convex-site>/pakasir/webhook`
-   - Pastikan URL ini memakai origin Convex `.site`, bukan origin frontend.
-
-4. Deploy / restart backend:
-   - Jalankan `npx convex dev` untuk environment dev, atau deploy ke environment yang dipakai testing/production.
-   - Pastikan schema terbaru dan function `payments.ts` sudah tersinkron.
-
-5. Lakukan smoke test end-to-end:
-   - Buka `/reserve`
-   - Buat reservasi baru
-   - Pastikan sheet QRIS tampil
-   - Cek countdown, payment guide, download QR, dan cancel
-   - Simulasikan / lakukan pembayaran dan pastikan reservasi berubah menjadi `confirmed`
-
-6. Verifikasi fallback admin:
-   - Buka halaman admin payments
-   - Pastikan tombol **Sync Status** bisa mengecek transaksi `pending` lewat Pakasir `transactiondetail`
-
-7. Cek expiry flow:
-   - Diamkan QRIS sampai kedaluwarsa
-   - Pastikan checkout tertutup, payment lokal gagal, dan reservasi pending ikut dilepas
+1. Daftarkan webhook di dashboard Pakasir:
+  - Arahkan webhook ke `https://<convex-site>/pakasir/webhook`
+  - Pastikan URL ini memakai origin Convex `.site`, bukan origin frontend.
+2. Deploy / restart backend:
+  - Jalankan `npx convex dev` untuk environment dev, atau deploy ke environment yang dipakai testing/production.
+  - Pastikan schema terbaru dan function `payments.ts` sudah tersinkron.
+3. Lakukan smoke test end-to-end:
+  - Buka `/reserve`
+  - Buat reservasi baru
+  - Pastikan sheet QRIS tampil
+  - Cek countdown, payment guide, download QR, dan cancel
+  - Simulasikan / lakukan pembayaran dan pastikan reservasi berubah menjadi `confirmed`
+4. Verifikasi fallback admin:
+  - Buka halaman admin payments
+  - Pastikan tombol **Sync Status** bisa mengecek transaksi `pending` lewat Pakasir `transactiondetail`
+5. Cek expiry flow:
+  - Diamkan QRIS sampai kedaluwarsa
+  - Pastikan checkout tertutup, payment lokal gagal, dan reservasi pending ikut dilepas
 
 Catatan:
+
 - Webhook Pakasir di implementasi ini diperlakukan sebagai trigger saja; sumber kebenaran tetap `transactiondetail`.
 - Kalau URL app masih lokal, gunakan `SITE_URL` dev yang sesuai dan endpoint webhook Convex dev yang aktif.
 

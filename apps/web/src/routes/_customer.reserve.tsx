@@ -28,11 +28,7 @@ export default function ReservePage() {
 	const [selectedTableId, setSelectedTableId] = useState<
 		FloorPlanTable["_id"] | null
 	>(null);
-
-	const selectedTable = useMemo(
-		() => tables?.find((table) => table._id === selectedTableId) ?? null,
-		[selectedTableId, tables],
-	);
+	const [selectedTable, setSelectedTable] = useState<FloorPlanTable | null>(null);
 
 	const requestedDate = searchParams.get("date");
 	const initialDate = isValidDateInput(requestedDate)
@@ -50,6 +46,19 @@ export default function ReservePage() {
 		const interval = window.setInterval(updateReferenceTimestamp, 10_000);
 		return () => window.clearInterval(interval);
 	}, []);
+
+	useEffect(() => {
+		if (!selectedTableId) {
+			setSelectedTable(null);
+			return;
+		}
+
+		const liveSelectedTable =
+			tables?.find((table) => table._id === selectedTableId) ?? null;
+		if (liveSelectedTable) {
+			setSelectedTable(liveSelectedTable);
+		}
+	}, [selectedTableId, tables]);
 
 	return (
 		<>
@@ -84,7 +93,10 @@ export default function ReservePage() {
 										selectableStatuses={["available", "booked", "occupied"]}
 										selectedTableId={selectedTableId ?? undefined}
 										tables={tables}
-										onTableSelect={(table) => setSelectedTableId(table._id)}
+										onTableSelect={(table) => {
+											setSelectedTableId(table._id);
+											setSelectedTable(table);
+										}}
 									/>
 								)}
 							</div>
@@ -129,11 +141,12 @@ export default function ReservePage() {
 			<ReservationFormSheet
 				eventId={eventId}
 				initialDate={initialDate}
-				open={selectedTable !== null}
+				open={selectedTableId !== null}
 				table={selectedTable}
 				onOpenChange={(open) => {
 					if (!open) {
 						setSelectedTableId(null);
+						setSelectedTable(null);
 					}
 				}}
 			/>
