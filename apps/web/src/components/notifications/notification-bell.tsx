@@ -25,7 +25,6 @@ export default function NotificationBell() {
 	return (
 		<Popover>
 			<PopoverTrigger
-				nativeButton={false}
 				render={
 					<Button
 						type="button"

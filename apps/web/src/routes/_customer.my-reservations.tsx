@@ -50,16 +50,17 @@ function getStatusLabel(status: "pending" | "confirmed" | "cancelled") {
 export default function MyReservationsPage() {
 	const reservations = useQuery(api.reservations.listByUser);
 	const cancelReservation = useMutation(api.reservations.cancel);
-	const startReservationCheckout = useAction(api.payments.startReservationCheckout);
+	const startReservationCheckout = useAction(
+		api.payments.startReservationCheckout,
+	);
 	const [activeTab, setActiveTab] = useState<ReservationTab>("upcoming");
 	const [activeCheckout, setActiveCheckout] =
 		useState<ReservationCheckoutSession | null>(null);
 	const [pendingReservationId, setPendingReservationId] = useState<
 		string | null
 	>(null);
-	const [pendingCheckoutReservationId, setPendingCheckoutReservationId] = useState<
-		string | null
-	>(null);
+	const [pendingCheckoutReservationId, setPendingCheckoutReservationId] =
+		useState<string | null>(null);
 	const [confirmingReservationId, setConfirmingReservationId] = useState<
 		string | null
 	>(null);
@@ -168,7 +169,9 @@ export default function MyReservationsPage() {
 									{reservation.status === "pending" ? (
 										<div className="flex flex-wrap gap-2 pt-2">
 											<Button
-												disabled={pendingCheckoutReservationId === reservation._id}
+												disabled={
+													pendingCheckoutReservationId === reservation._id
+												}
 												size="sm"
 												variant="outline"
 												onClick={async () => {

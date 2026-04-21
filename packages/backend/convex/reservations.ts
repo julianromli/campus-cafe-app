@@ -9,6 +9,7 @@ import {
 	mutation,
 	query,
 } from "./_generated/server";
+import { requireAuth, requireRole } from "./lib/auth";
 import {
 	applyOperationalTableStatus,
 	CANCELLATION_CUTOFF_MS,
@@ -18,13 +19,12 @@ import {
 	getReservationEndTime,
 	getReservationSearchWindowStart,
 	MAX_ADVANCE_BOOKING_DAYS,
-	parseBusinessDateFilter,
 	PENDING_EXPIRY_MS,
-	timeRangesOverlap,
+	parseBusinessDateFilter,
 	type ReservationDurationHours,
+	timeRangesOverlap,
 	validateReservationWindow,
 } from "./lib/reservation_utils";
-import { requireAuth, requireRole } from "./lib/auth";
 
 const durationHoursValidator = v.union(
 	v.literal(1),
@@ -131,8 +131,11 @@ function isStaffOrAdmin(role: "customer" | "staff" | "admin"): boolean {
 }
 
 function toReservationWithTable(table: AppTable, reservation: AppReservation) {
-	const { checkoutLockExpiresAt: _checkoutLockExpiresAt, checkoutLockToken: _checkoutLockToken, ...publicReservation } =
-		reservation;
+	const {
+		checkoutLockExpiresAt: _checkoutLockExpiresAt,
+		checkoutLockToken: _checkoutLockToken,
+		...publicReservation
+	} = reservation;
 	return {
 		...publicReservation,
 		table,
@@ -144,8 +147,11 @@ function toReservationBoardItem(
 	reservation: AppReservation,
 	user: AppUser | null,
 ) {
-	const { checkoutLockExpiresAt: _checkoutLockExpiresAt, checkoutLockToken: _checkoutLockToken, ...publicReservation } =
-		reservation;
+	const {
+		checkoutLockExpiresAt: _checkoutLockExpiresAt,
+		checkoutLockToken: _checkoutLockToken,
+		...publicReservation
+	} = reservation;
 	return {
 		...publicReservation,
 		customer: {
@@ -559,11 +565,11 @@ export const expirePendingReservation = internalMutation({
 			return null;
 		}
 
-	await ctx.db.patch(reservation._id, {
-		checkoutLockExpiresAt: undefined,
-		checkoutLockToken: undefined,
-		status: "cancelled",
-	});
+		await ctx.db.patch(reservation._id, {
+			checkoutLockExpiresAt: undefined,
+			checkoutLockToken: undefined,
+			status: "cancelled",
+		});
 		return null;
 	},
 });

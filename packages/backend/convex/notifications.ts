@@ -147,9 +147,12 @@ export const notifyAdminsOfCancellationRefund = internalMutation({
 			ctx.db.get(reservation.userId),
 		]);
 
-		const payment = await ctx.runQuery(internal.payments.getReservationPayment, {
-			reservationId: args.reservationId,
-		});
+		const payment = await ctx.runQuery(
+			internal.payments.getReservationPayment,
+			{
+				reservationId: args.reservationId,
+			},
+		);
 		const amount = payment?.totalPayment ?? payment?.amount ?? 0;
 		const customerName = customer?.name ?? "Pelanggan";
 		const tableLabel = table?.label ?? "?";

@@ -167,9 +167,12 @@ export const sendBookingConfirmation = internalMutation({
 			return null;
 		}
 
-		const payment = await ctx.runQuery(internal.payments.getReservationPayment, {
-			reservationId: args.reservationId,
-		});
+		const payment = await ctx.runQuery(
+			internal.payments.getReservationPayment,
+			{
+				reservationId: args.reservationId,
+			},
+		);
 		const totalIdr = formatIdr(payment?.totalPayment ?? payment?.amount ?? 0);
 		const code = reservation.confirmationCode ?? "";
 		const endTimeMs =

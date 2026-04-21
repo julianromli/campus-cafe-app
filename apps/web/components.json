@@ -1,25 +1,25 @@
 {
-  "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "base-luma",
-  "rsc": false,
-  "tsx": true,
-  "tailwind": {
-    "config": "",
-    "css": "../../packages/ui/src/styles/globals.css",
-    "baseColor": "taupe",
-    "cssVariables": true,
-    "prefix": ""
-  },
-  "iconLibrary": "hugeicons",
-  "rtl": false,
-  "aliases": {
-    "components": "@/components",
-    "utils": "@campus-cafe/ui/lib/utils",
-    "ui": "@campus-cafe/ui/components",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
-  },
-  "menuColor": "inverted-translucent",
-  "menuAccent": "subtle",
-  "registries": {}
+	"$schema": "https://ui.shadcn.com/schema.json",
+	"style": "base-luma",
+	"rsc": false,
+	"tsx": true,
+	"tailwind": {
+		"config": "",
+		"css": "../../packages/ui/src/styles/globals.css",
+		"baseColor": "taupe",
+		"cssVariables": true,
+		"prefix": ""
+	},
+	"iconLibrary": "hugeicons",
+	"rtl": false,
+	"aliases": {
+		"components": "@/components",
+		"utils": "@campus-cafe/ui/lib/utils",
+		"ui": "@campus-cafe/ui/components",
+		"lib": "@/lib",
+		"hooks": "@/hooks"
+	},
+	"menuColor": "inverted-translucent",
+	"menuAccent": "subtle",
+	"registries": {}
 }

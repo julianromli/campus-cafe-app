@@ -164,7 +164,9 @@ export default function EventDetailPage() {
 						<Button
 							variant="outline"
 							className="w-full"
-							render={<Link to={`/reserve?${reserveSearchParams.toString()}`} />}
+							render={
+								<Link to={`/reserve?${reserveSearchParams.toString()}`} />
+							}
 						>
 							Reservasi meja
 						</Button>

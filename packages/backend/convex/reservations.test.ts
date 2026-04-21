@@ -46,7 +46,10 @@ async function seedUser(
 
 async function seedTable(
 	t: ReturnType<typeof createBackendTest>,
-	args?: { label?: string; status?: "available" | "booked" | "inactive" | "occupied" },
+	args?: {
+		label?: string;
+		status?: "available" | "booked" | "inactive" | "occupied";
+	},
 ): Promise<Id<"tables">> {
 	return await t.run(async (ctx) => {
 		return await ctx.db.insert("tables", {
@@ -276,7 +279,9 @@ describe("reservation state machine", () => {
 						JSON.stringify({
 							payment: {
 								amount: 50000,
-								expired_at: new Date(Date.now() + PENDING_EXPIRY_MS).toISOString(),
+								expired_at: new Date(
+									Date.now() + PENDING_EXPIRY_MS,
+								).toISOString(),
 								fee: 1000,
 								order_id: "RES-CANCEL-1",
 								payment_method: "qris",
@@ -305,17 +310,23 @@ describe("reservation state machine", () => {
 				.mockResolvedValueOnce(new Response("{}", { status: 200 })),
 		);
 
-		const checkout = await asCustomer.action(api.payments.startReservationCheckout, {
-			durationHours: 1,
-			guestCount: 2,
-			mode: "new",
-			startTime: createBusinessTimestamp(1, 11),
-			tableId,
-		});
+		const checkout = await asCustomer.action(
+			api.payments.startReservationCheckout,
+			{
+				durationHours: 1,
+				guestCount: 2,
+				mode: "new",
+				startTime: createBusinessTimestamp(1, 11),
+				tableId,
+			},
+		);
 
-		const cancelled = await asCustomer.action(api.payments.cancelReservationCheckout, {
-			reservationId: checkout.reservationId,
-		});
+		const cancelled = await asCustomer.action(
+			api.payments.cancelReservationCheckout,
+			{
+				reservationId: checkout.reservationId,
+			},
+		);
 		const [reservationRecord, paymentRecord] = await t.run(async (ctx) => {
 			return await Promise.all([
 				ctx.db.get(checkout.reservationId),
@@ -420,7 +431,9 @@ describe("reservation state machine", () => {
 				tableId,
 				userId: (await ctx.db
 					.query("users")
-					.withIndex("by_email", (query) => query.eq("email", "cutoff@example.com"))
+					.withIndex("by_email", (query) =>
+						query.eq("email", "cutoff@example.com"),
+					)
 					.unique())!._id,
 			});
 		});
@@ -462,9 +475,12 @@ describe("reservation state machine", () => {
 				.mockResolvedValueOnce(new Response("{}", { status: 200 })),
 		);
 
-		const result = await asCustomer.action(api.payments.cancelReservationCheckout, {
-			reservationId,
-		});
+		const result = await asCustomer.action(
+			api.payments.cancelReservationCheckout,
+			{
+				reservationId,
+			},
+		);
 		const [reservationRecord, paymentRecord] = await t.run(async (ctx) => {
 			return await Promise.all([
 				ctx.db.get(reservationId),
@@ -522,25 +538,29 @@ describe("reservation state machine", () => {
 
 		vi.stubGlobal(
 			"fetch",
-			vi.fn(async () =>
-				new Response(
-					JSON.stringify({
-						transaction: {
-							amount: 51000,
-							order_id: "RES-SYNC-1",
-							payment_method: "qris",
-							project: "campus-cafe",
-							status: "completed",
-						},
-					}),
-					{ status: 200 },
-				),
+			vi.fn(
+				async () =>
+					new Response(
+						JSON.stringify({
+							transaction: {
+								amount: 51000,
+								order_id: "RES-SYNC-1",
+								payment_method: "qris",
+								project: "campus-cafe",
+								status: "completed",
+							},
+						}),
+						{ status: 200 },
+					),
 			),
 		);
 
-		const syncResult = await asAdmin.action(api.payments.syncReservationPaymentStatus, {
-			refId: "RES-SYNC-1",
-		});
+		const syncResult = await asAdmin.action(
+			api.payments.syncReservationPaymentStatus,
+			{
+				refId: "RES-SYNC-1",
+			},
+		);
 		const reservationRecord = await t.run(async (ctx) => {
 			return await ctx.db.get(reservation.reservationId);
 		});

@@ -21,20 +21,29 @@ export default function EventsListPage() {
 	});
 
 	return (
-		<div className="flex flex-col gap-6 sm:gap-8 pb-8">
+		<div className="flex flex-col gap-6 pb-8 sm:gap-8">
 			<div className="flex items-center justify-between">
 				<div className="flex flex-col gap-1">
-					<h1 className="font-heading text-3xl font-semibold tracking-tight">
+					<h1 className="font-heading font-semibold text-3xl tracking-tight">
 						Campus Events
 					</h1>
 					<p className="text-muted-foreground text-sm">
 						Discover what's happening around you
 					</p>
 				</div>
-				<Button variant="ghost" size="icon" className="shrink-0 sm:hidden" render={<Link to="/" />}>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="shrink-0 sm:hidden"
+					render={<Link to="/" />}
+				>
 					<ChevronLeft className="size-5" />
 				</Button>
-				<Button variant="outline" className="hidden sm:flex" render={<Link to="/" />}>
+				<Button
+					variant="outline"
+					className="hidden sm:flex"
+					render={<Link to="/" />}
+				>
 					<ChevronLeft className="mr-2 size-4" />
 					Back to Home
 				</Button>
@@ -43,7 +52,7 @@ export default function EventsListPage() {
 			{events === undefined ? (
 				<EventListSkeleton count={6} />
 			) : events.length === 0 ? (
-				<Empty className="rounded-[2.5rem] border-none bg-muted/30 p-12 mt-4">
+				<Empty className="mt-4 rounded-[2.5rem] border-none bg-muted/30 p-12">
 					<EmptyHeader>
 						<div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-background shadow-sm">
 							<CalendarRange className="size-8 text-muted-foreground" />

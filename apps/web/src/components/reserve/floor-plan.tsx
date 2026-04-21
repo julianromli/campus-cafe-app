@@ -100,9 +100,9 @@ export default function FloorPlan({
 	};
 
 	return (
-		<div className="w-full overflow-x-auto rounded-lg border border-border bg-card p-3">
+		<div className="w-full overflow-x-auto p-1">
 			{isNarrow ? (
-				<p className="mb-2 text-center text-muted-foreground text-xs md:hidden">
+				<p className="mb-4 text-center font-medium text-muted-foreground text-xs md:hidden">
 					← Geser untuk melihat seluruh denah →
 				</p>
 			) : null}

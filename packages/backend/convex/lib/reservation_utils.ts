@@ -42,7 +42,9 @@ function getBusinessTimeParts(timestamp: number): BusinessTimeParts {
 	};
 }
 
-export function getReservationSearchWindowStart(referenceTimestamp: number): number {
+export function getReservationSearchWindowStart(
+	referenceTimestamp: number,
+): number {
 	return Math.max(0, referenceTimestamp - MAX_RESERVATION_DURATION_MS);
 }
 

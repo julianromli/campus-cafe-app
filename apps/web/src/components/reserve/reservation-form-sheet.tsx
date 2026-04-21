@@ -81,7 +81,7 @@ function isValidDateInput(value: string | undefined): value is string {
 function dateFromYmdLocal(ymd: string): Date {
 	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
 	if (!match) {
-		return new Date(NaN);
+		return new Date(Number.NaN);
 	}
 
 	const year = Number(match[1]);
@@ -107,7 +107,11 @@ function formatReservationDateLabel(ymd: string): string {
 	}).format(parsed);
 }
 
-function clampDateInput(value: string, minDate: string, maxDate: string): string {
+function clampDateInput(
+	value: string,
+	minDate: string,
+	maxDate: string,
+): string {
 	if (value < minDate) {
 		return minDate;
 	}
@@ -174,8 +178,12 @@ export default function ReservationFormSheet({
 	open,
 	table,
 }: ReservationFormSheetProps) {
-	const [referenceTimestamp, setReferenceTimestamp] = useState(() => Date.now());
-	const startReservationCheckout = useAction(api.payments.startReservationCheckout);
+	const [referenceTimestamp, setReferenceTimestamp] = useState(() =>
+		Date.now(),
+	);
+	const startReservationCheckout = useAction(
+		api.payments.startReservationCheckout,
+	);
 	const user = useQuery(api.users.getMe);
 	const minDate = useMemo(() => getMinDate(), []);
 	const maxDate = useMemo(() => getMaxDate(), []);
@@ -184,7 +192,9 @@ export default function ReservationFormSheet({
 		[initialDate, maxDate, minDate],
 	);
 
-	const [checkout, setCheckout] = useState<ReservationCheckoutSession | null>(null);
+	const [checkout, setCheckout] = useState<ReservationCheckoutSession | null>(
+		null,
+	);
 	const [date, setDate] = useState(defaultSelection.date);
 	const [startTime, setStartTime] = useState(defaultSelection.startTime);
 	const [durationHours, setDurationHours] = useState<DurationHours>(1);
@@ -310,9 +320,11 @@ export default function ReservationFormSheet({
 						</SheetDescription>
 					</SheetHeader>
 
-					<div className="flex flex-col gap-5 px-6 pb-6">
-						<section className="rounded-md border border-border p-4">
-							<div className="font-medium text-sm">{reservationSummary}</div>
+					<div className="flex flex-col gap-6 px-6 pb-6">
+						<section className="rounded-2xl border border-primary/10 bg-primary/5 p-5">
+							<div className="font-semibold text-base text-foreground">
+								{reservationSummary}
+							</div>
 							<p className="mt-1 text-muted-foreground text-sm">
 								Status meja akan dicek ulang tepat sebelum checkout QRIS dibuat.
 							</p>
@@ -323,7 +335,6 @@ export default function ReservationFormSheet({
 								<FieldLabel htmlFor="reservation-date">Date</FieldLabel>
 								<Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
 									<PopoverTrigger
-										nativeButton={false}
 										render={
 											<Button
 												type="button"
@@ -381,7 +392,7 @@ export default function ReservationFormSheet({
 								>
 									<SelectTrigger
 										id="reservation-start-time"
-										className="h-11 w-full min-h-11 min-w-0 justify-between rounded-3xl border border-transparent bg-input/50 px-3 text-base font-normal shadow-none hover:bg-input/60 data-[size=default]:h-11 md:text-sm [&_svg]:text-muted-foreground"
+										className="h-11 min-h-11 w-full min-w-0 justify-between rounded-3xl border border-transparent bg-input/50 px-3 font-normal text-base shadow-none hover:bg-input/60 data-[size=default]:h-11 md:text-sm [&_svg]:text-muted-foreground"
 									>
 										<SelectValue placeholder="Pilih jam" />
 									</SelectTrigger>
@@ -403,7 +414,7 @@ export default function ReservationFormSheet({
 								<div className="flex flex-wrap gap-2">
 									{[1, 2, 3].map((option) => (
 										<Button
-											className="min-h-11 min-w-[44px] flex-1 sm:flex-none"
+											className="min-h-11 min-w-[44px] flex-1 rounded-full sm:flex-none"
 											key={option}
 											type="button"
 											variant={durationHours === option ? "default" : "outline"}
@@ -419,7 +430,9 @@ export default function ReservationFormSheet({
 							</Field>
 
 							<Field>
-								<FieldLabel htmlFor="reservation-guests">Guest count</FieldLabel>
+								<FieldLabel htmlFor="reservation-guests">
+									Guest count
+								</FieldLabel>
 								<Input
 									id="reservation-guests"
 									max={table?.capacity ?? 1}
@@ -446,7 +459,8 @@ export default function ReservationFormSheet({
 							<Alert>
 								<AlertTitle>Slot tersedia</AlertTitle>
 								<AlertDescription>
-									Meja ini masih tersedia untuk jadwal reservasi yang kamu pilih.
+									Meja ini masih tersedia untuk jadwal reservasi yang kamu
+									pilih.
 								</AlertDescription>
 							</Alert>
 						) : shouldCheckAvailability ? (
@@ -485,16 +499,17 @@ export default function ReservationFormSheet({
 							</AlertDescription>
 						</Alert>
 
-						<div className="flex flex-col gap-2 pt-1 sm:flex-row sm:justify-end">
+						<div className="flex flex-col gap-3 pt-2 sm:flex-row sm:justify-end">
 							<Button
+								className="min-h-11 rounded-full"
 								type="button"
-								variant="outline"
+								variant="ghost"
 								onClick={() => onOpenChange(false)}
 							>
 								Cancel
 							</Button>
 							<Button
-								className="min-h-11 sm:min-w-[180px]"
+								className="min-h-11 rounded-full sm:min-w-[180px]"
 								disabled={!canSubmit}
 								type="button"
 								onClick={async () => {
@@ -506,7 +521,9 @@ export default function ReservationFormSheet({
 
 									try {
 										if (startTimestamp === null) {
-											throw new Error("Select a valid reservation date and time");
+											throw new Error(
+												"Select a valid reservation date and time",
+											);
 										}
 										if (!Number.isInteger(guestTotal) || guestTotal < 1) {
 											throw new Error("Guest count must be at least 1");

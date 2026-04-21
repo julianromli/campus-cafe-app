@@ -2,13 +2,13 @@ import { v } from "convex/values";
 
 import type { Doc } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { requireRole } from "./lib/auth";
 import {
 	applyOperationalTableStatus,
 	getActiveConfirmedTableIds,
 	getReservationSearchWindowStart,
 	isReservationActiveAt,
 } from "./lib/reservation_utils";
-import { requireRole } from "./lib/auth";
 
 const tableStatusValidator = v.union(
 	v.literal("available"),
@@ -112,8 +112,12 @@ export const list = query({
 	},
 	returns: v.array(tableValidator),
 	handler: async (ctx, args) => {
-		const [availableTables, bookedTables, occupiedTables, activeBookedTableIds] =
-			await Promise.all([
+		const [
+			availableTables,
+			bookedTables,
+			occupiedTables,
+			activeBookedTableIds,
+		] = await Promise.all([
 			ctx.db
 				.query("tables")
 				.withIndex("by_status", (query) => query.eq("status", "available"))
@@ -239,7 +243,9 @@ export const setStatus = mutation({
 		await requireRole(ctx, "admin");
 
 		if (args.status === "booked") {
-			throw new Error("Booked status is managed automatically from reservations");
+			throw new Error(
+				"Booked status is managed automatically from reservations",
+			);
 		}
 
 		const table = await ctx.db.get(args.id);

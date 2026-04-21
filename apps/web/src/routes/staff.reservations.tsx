@@ -145,7 +145,11 @@ export default function StaffReservationsPage() {
 			tableReservations.find(
 				(reservation) => reservation.startTime >= referenceTimestamp,
 			) ?? null;
-		return upcomingReservation ?? tableReservations[tableReservations.length - 1] ?? null;
+		return (
+			upcomingReservation ??
+			tableReservations[tableReservations.length - 1] ??
+			null
+		);
 	}, [referenceTimestamp, reservations, selectedTableId]);
 
 	const handleMarkOccupied = async (tableId: FloorPlanTable["_id"]) => {
@@ -372,8 +376,7 @@ export default function StaffReservationsPage() {
 															{isReservationActiveNow(
 																reservation,
 																referenceTimestamp,
-															) &&
-															reservation.table.status !== "occupied" ? (
+															) && reservation.table.status !== "occupied" ? (
 																<Button
 																	disabled={
 																		pendingTableActionId === reservation.tableId
@@ -440,11 +443,11 @@ export default function StaffReservationsPage() {
 										: "Mark occupied"}
 								</Button>
 							) : selectedReservation &&
-							  isReservationActiveNow(
+								isReservationActiveNow(
 									selectedReservation,
 									referenceTimestamp,
 								) &&
-							  selectedTable.status !== "occupied" ? (
+								selectedTable.status !== "occupied" ? (
 								<Button
 									disabled={pendingTableActionId === selectedTable._id}
 									onClick={() => void handleMarkOccupied(selectedTable._id)}

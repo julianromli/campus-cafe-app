@@ -1,6 +1,10 @@
 import { api } from "@campus-cafe/backend/convex/_generated/api";
 import type { Id } from "@campus-cafe/backend/convex/_generated/dataModel";
-import { Avatar, AvatarFallback, AvatarImage } from "@campus-cafe/ui/components/avatar";
+import {
+	Avatar,
+	AvatarFallback,
+	AvatarImage,
+} from "@campus-cafe/ui/components/avatar";
 import { Badge } from "@campus-cafe/ui/components/badge";
 import { Button } from "@campus-cafe/ui/components/button";
 import {
@@ -125,12 +129,10 @@ export default function ProfilePage() {
 	return (
 		<div className="mx-auto flex w-full max-w-2xl flex-col gap-8 pb-8">
 			<div className="flex flex-col gap-1">
-				<h1 className="font-heading text-3xl font-semibold tracking-tight">
+				<h1 className="font-heading font-semibold text-3xl tracking-tight">
 					My Profile
 				</h1>
-				<p className="text-muted-foreground">
-					Manage your account settings
-				</p>
+				<p className="text-muted-foreground">Manage your account settings</p>
 			</div>
 
 			<div className="flex flex-col gap-6">
@@ -138,23 +140,23 @@ export default function ProfilePage() {
 				<Card className="overflow-hidden rounded-[2rem] border-none bg-muted/30 shadow-none">
 					<CardContent className="p-6 sm:p-8">
 						<div className="flex flex-col gap-8 sm:flex-row sm:items-center">
-							<div className="relative group">
+							<div className="group relative">
 								<Avatar className="size-28 border-4 border-background shadow-sm sm:size-32">
 									<AvatarImage src={user.avatarUrl || ""} />
-									<AvatarFallback className="bg-primary/10 text-3xl font-medium text-primary">
+									<AvatarFallback className="bg-primary/10 font-medium text-3xl text-primary">
 										{getInitials(user.name)}
 									</AvatarFallback>
 								</Avatar>
-								<div 
+								<div
 									className="absolute inset-0 flex cursor-pointer items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
 									onClick={() => fileInputRef.current?.click()}
 								>
 									<Camera className="size-8 text-white" />
 								</div>
 								{/* Mobile upload button - visible without hover */}
-								<Button 
-									size="icon" 
-									className="absolute bottom-0 right-0 rounded-full border-4 border-background sm:hidden"
+								<Button
+									size="icon"
+									className="absolute right-0 bottom-0 rounded-full border-4 border-background sm:hidden"
 									onClick={() => fileInputRef.current?.click()}
 									disabled={avatarPending}
 								>
@@ -164,12 +166,17 @@ export default function ProfilePage() {
 
 							<div className="flex flex-1 flex-col gap-2">
 								<div className="flex items-center gap-2">
-									<h2 className="text-2xl font-semibold tracking-tight">{user.name}</h2>
-									<Badge variant="secondary" className="bg-background font-medium text-xs capitalize">
+									<h2 className="font-semibold text-2xl tracking-tight">
+										{user.name}
+									</h2>
+									<Badge
+										variant="secondary"
+										className="bg-background font-medium text-xs capitalize"
+									>
 										{getRoleLabel(user.role)}
 									</Badge>
 								</div>
-								
+
 								<div className="flex items-center gap-2 text-muted-foreground">
 									<Mail className="size-4" />
 									<span>{user.email}</span>
@@ -202,16 +209,24 @@ export default function ProfilePage() {
 													headers: { "Content-Type": file.type },
 													method: "POST",
 												});
-												if (!uploadResponse.ok) throw new Error("Upload failed");
-												const json = (await uploadResponse.json()) as { storageId?: string };
-												if (!json.storageId) throw new Error("Missing storage id from upload");
-												
+												if (!uploadResponse.ok)
+													throw new Error("Upload failed");
+												const json = (await uploadResponse.json()) as {
+													storageId?: string;
+												};
+												if (!json.storageId)
+													throw new Error("Missing storage id from upload");
+
 												await updateProfile({
 													avatarStorageId: json.storageId as Id<"_storage">,
 												});
 												toast.success("Avatar updated");
 											} catch (error) {
-												toast.error(error instanceof Error ? error.message : "Failed to upload avatar");
+												toast.error(
+													error instanceof Error
+														? error.message
+														: "Failed to upload avatar",
+												);
 											} finally {
 												setAvatarPending(false);
 											}
@@ -240,7 +255,11 @@ export default function ProfilePage() {
 													await updateProfile({ avatarStorageId: null });
 													toast.success("Avatar removed");
 												} catch (error) {
-													toast.error(error instanceof Error ? error.message : "Failed to remove avatar");
+													toast.error(
+														error instanceof Error
+															? error.message
+															: "Failed to remove avatar",
+													);
 												} finally {
 													setAvatarPending(false);
 												}
@@ -257,7 +276,7 @@ export default function ProfilePage() {
 
 				{/* Personal Info Form */}
 				<Card className="rounded-[2rem] border-none bg-muted/30 shadow-none">
-					<CardHeader className="px-6 pb-2 pt-6 sm:px-8 sm:pt-8">
+					<CardHeader className="px-6 pt-6 pb-2 sm:px-8 sm:pt-8">
 						<CardTitle className="text-lg">Personal Information</CardTitle>
 						<CardDescription>Update your contact details</CardDescription>
 					</CardHeader>
@@ -276,7 +295,9 @@ export default function ProfilePage() {
 										const invalid = field.state.meta.errors.length > 0;
 										return (
 											<Field data-invalid={invalid || undefined}>
-												<FieldLabel htmlFor={field.name}>Display Name</FieldLabel>
+												<FieldLabel htmlFor={field.name}>
+													Display Name
+												</FieldLabel>
 												<FieldContent>
 													<Input
 														className="h-12 rounded-xl bg-background"
@@ -323,8 +344,8 @@ export default function ProfilePage() {
 								})}
 							>
 								{({ canSubmit, isSubmitting }) => (
-									<Button 
-										disabled={!canSubmit || isSubmitting} 
+									<Button
+										disabled={!canSubmit || isSubmitting}
 										type="submit"
 										size="lg"
 										className="w-full self-end rounded-xl sm:w-auto"

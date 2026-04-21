@@ -1,6 +1,10 @@
 import { api } from "@campus-cafe/backend/convex/_generated/api";
+import {
+	Avatar,
+	AvatarFallback,
+	AvatarImage,
+} from "@campus-cafe/ui/components/avatar";
 import { Button } from "@campus-cafe/ui/components/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@campus-cafe/ui/components/avatar";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -35,13 +39,15 @@ export default function UserMenu() {
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="rounded-full" />}>
+			<DropdownMenuTrigger
+				render={<Button variant="ghost" size="icon" className="rounded-full" />}
+			>
 				<Avatar className="size-9">
 					<AvatarImage
 						src={user.avatarUrl || ""}
 						alt={user.name || "User avatar"}
 					/>
-					<AvatarFallback className="bg-primary/10 text-primary font-medium">
+					<AvatarFallback className="bg-primary/10 font-medium text-primary">
 						{getInitials(user.name)}
 					</AvatarFallback>
 				</Avatar>
@@ -50,8 +56,8 @@ export default function UserMenu() {
 				<DropdownMenuGroup>
 					<DropdownMenuLabel className="font-normal">
 						<div className="flex flex-col space-y-1">
-							<p className="text-sm font-medium leading-none">{user?.name}</p>
-							<p className="text-xs leading-none text-muted-foreground">
+							<p className="font-medium text-sm leading-none">{user?.name}</p>
+							<p className="text-muted-foreground text-xs leading-none">
 								{user?.email}
 							</p>
 						</div>

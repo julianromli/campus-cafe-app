@@ -3,6 +3,11 @@
 import { api } from "@campus-cafe/backend/convex/_generated/api";
 import type { Id } from "@campus-cafe/backend/convex/_generated/dataModel";
 import {
+	Alert,
+	AlertDescription,
+	AlertTitle,
+} from "@campus-cafe/ui/components/alert";
+import {
 	AlertDialog,
 	AlertDialogAction,
 	AlertDialogCancel,
@@ -12,11 +17,6 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "@campus-cafe/ui/components/alert-dialog";
-import {
-	Alert,
-	AlertDescription,
-	AlertTitle,
-} from "@campus-cafe/ui/components/alert";
 import { Button } from "@campus-cafe/ui/components/button";
 import {
 	Card,
@@ -90,7 +90,9 @@ export default function ReservationPaymentSheet({
 	onOpenChange,
 	open,
 }: ReservationPaymentSheetProps) {
-	const cancelReservationCheckout = useAction(api.payments.cancelReservationCheckout);
+	const cancelReservationCheckout = useAction(
+		api.payments.cancelReservationCheckout,
+	);
 	const reservation = useQuery(
 		api.reservations.getById,
 		open ? { id: checkout.reservationId } : "skip",
@@ -191,7 +193,9 @@ export default function ReservationPaymentSheet({
 		}
 
 		expiryNoticeShownRef.current = true;
-		toast.message("QRIS sudah kedaluwarsa. Buat transaksi baru untuk melanjutkan.");
+		toast.message(
+			"QRIS sudah kedaluwarsa. Buat transaksi baru untuk melanjutkan.",
+		);
 		onOpenChange(false);
 	}, [isExpired, onOpenChange, open]);
 
@@ -273,16 +277,22 @@ export default function ReservationPaymentSheet({
 								{checkout.activePayment.fee ? (
 									<div className="flex items-center justify-between gap-3 text-sm">
 										<span className="text-muted-foreground">Biaya</span>
-										<span>{amountFormatter.format(checkout.activePayment.fee)}</span>
+										<span>
+											{amountFormatter.format(checkout.activePayment.fee)}
+										</span>
 									</div>
 								) : null}
 								<div className="flex items-center justify-between gap-3 text-sm">
 									<span className="text-muted-foreground">Berlaku sampai</span>
-									<span>{formatDeadline(checkout.activePayment.expiresAt)}</span>
+									<span>
+										{formatDeadline(checkout.activePayment.expiresAt)}
+									</span>
 								</div>
 								<div className="flex items-center justify-between gap-3 rounded-2xl bg-muted px-3 py-2 text-sm">
 									<span className="text-muted-foreground">Countdown</span>
-									<span className="font-medium">{formatCountdown(remainingMs)}</span>
+									<span className="font-medium">
+										{formatCountdown(remainingMs)}
+									</span>
 								</div>
 							</CardContent>
 						</Card>
@@ -317,8 +327,8 @@ export default function ReservationPaymentSheet({
 						<Alert>
 							<AlertTitle>Konfirmasi otomatis</AlertTitle>
 							<AlertDescription>
-								Setelah pembayaran sukses, status reservasi akan ter-update tanpa
-								perlu refresh halaman secara manual.
+								Setelah pembayaran sukses, status reservasi akan ter-update
+								tanpa perlu refresh halaman secara manual.
 							</AlertDescription>
 						</Alert>
 
@@ -368,7 +378,9 @@ export default function ReservationPaymentSheet({
 						</DialogDescription>
 					</DialogHeader>
 					<div className="flex flex-col gap-3 text-sm">
-						<p>1. Buka aplikasi mobile banking atau e-wallet yang mendukung QRIS.</p>
+						<p>
+							1. Buka aplikasi mobile banking atau e-wallet yang mendukung QRIS.
+						</p>
 						<p>2. Scan QR yang tampil, atau unduh dulu gambarnya bila perlu.</p>
 						<p>
 							3. Pastikan total yang dibayar sama persis dengan nominal yang
@@ -393,9 +405,7 @@ export default function ReservationPaymentSheet({
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel disabled={cancelling}>
-							Kembali
-						</AlertDialogCancel>
+						<AlertDialogCancel disabled={cancelling}>Kembali</AlertDialogCancel>
 						<AlertDialogAction
 							disabled={cancelling}
 							type="button"

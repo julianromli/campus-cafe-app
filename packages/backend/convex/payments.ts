@@ -3,12 +3,12 @@ import { v } from "convex/values";
 import { api, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import {
+	type ActionCtx,
 	action,
 	httpAction,
 	internalMutation,
 	internalQuery,
 	query,
-	type ActionCtx,
 } from "./_generated/server";
 import { requireRole } from "./lib/auth";
 
@@ -293,7 +293,9 @@ function parsePakasirCreateResponse(response: unknown): {
 	};
 }
 
-function parsePakasirDetailResponse(response: unknown): ParsedPakasirDetail | null {
+function parsePakasirDetailResponse(
+	response: unknown,
+): ParsedPakasirDetail | null {
 	if (!isObject(response)) {
 		return null;
 	}
@@ -534,18 +536,18 @@ async function ensureReservationCheckoutSession(
 		user: CheckoutUser;
 	},
 ): Promise<{
-		activePayment: {
-			amount: number;
-			expiresAt: number;
-			fee?: number;
-			paymentMethod: string;
-			paymentNumber: string;
-			provider: "pakasir";
-			refId: string;
-			totalPayment: number;
-		};
-		reservationId: Id<"reservations">;
-	}> {
+	activePayment: {
+		amount: number;
+		expiresAt: number;
+		fee?: number;
+		paymentMethod: string;
+		paymentNumber: string;
+		provider: "pakasir";
+		refId: string;
+		totalPayment: number;
+	};
+	reservationId: Id<"reservations">;
+}> {
 	for (let attempt = 0; attempt < MAX_CHECKOUT_ATTEMPTS; attempt += 1) {
 		const claim = await ctx.runMutation(
 			internal.payments.claimReservationCheckoutLock,
@@ -656,17 +658,14 @@ export const startReservationCheckout = action({
 		const reservation: {
 			confirmationCode: string;
 			reservationId: Id<"reservations">;
-		} = await ctx.runMutation(
-			internal.reservations.createPendingForCheckout,
-			{
-				durationHours: args.durationHours,
-				eventId: args.eventId,
-				guestCount: args.guestCount,
-				startTime: args.startTime,
-				tableId: args.tableId,
-				userId: user._id,
-			},
-		);
+		} = await ctx.runMutation(internal.reservations.createPendingForCheckout, {
+			durationHours: args.durationHours,
+			eventId: args.eventId,
+			guestCount: args.guestCount,
+			startTime: args.startTime,
+			tableId: args.tableId,
+			userId: user._id,
+		});
 
 		try {
 			return await ensureReservationCheckoutSession(ctx, {
@@ -730,12 +729,15 @@ export const cancelReservationCheckout = action({
 				detail.amount === checkout.activePayment.amount &&
 				detail.status === "completed"
 			) {
-				await ctx.runMutation(internal.payments.applyReservationPaymentSuccess, {
-					amount: detail.amount,
-					completedAt: detail.completedAt,
-					paymentMethod: detail.paymentMethod,
-					refId: detail.orderId,
-				});
+				await ctx.runMutation(
+					internal.payments.applyReservationPaymentSuccess,
+					{
+						amount: detail.amount,
+						completedAt: detail.completedAt,
+						paymentMethod: detail.paymentMethod,
+						refId: detail.orderId,
+					},
+				);
 				return { result: "paid" as const };
 			}
 
@@ -797,7 +799,9 @@ export const getReservationPayment = internalQuery({
 		if (reservation.paymentRef) {
 			return await ctx.db
 				.query("payments")
-				.withIndex("by_refId", (query) => query.eq("refId", reservation.paymentRef!))
+				.withIndex("by_refId", (query) =>
+					query.eq("refId", reservation.paymentRef!),
+				)
 				.unique();
 		}
 
@@ -809,7 +813,8 @@ export const getReservationPayment = internalQuery({
 			.collect();
 
 		return (
-			payments.sort((left, right) => right.createdAt - left.createdAt)[0] ?? null
+			payments.sort((left, right) => right.createdAt - left.createdAt)[0] ??
+			null
 		);
 	},
 });
@@ -991,7 +996,9 @@ export const recordPendingReservationPayment = internalMutation({
 			}
 		}
 
-		const existing = existingPayments.find((payment) => payment.refId === args.refId);
+		const existing = existingPayments.find(
+			(payment) => payment.refId === args.refId,
+		);
 		if (existing) {
 			await ctx.db.patch(existing._id, {
 				amount: args.amount,
@@ -1127,7 +1134,9 @@ export const markPaid = internalMutation({
 
 		await ctx.db.patch(payment._id, {
 			...(args.amount !== undefined ? { amount: args.amount } : {}),
-			...(args.completedAt !== undefined ? { completedAt: args.completedAt } : {}),
+			...(args.completedAt !== undefined
+				? { completedAt: args.completedAt }
+				: {}),
 			...(args.paymentMethod ? { paymentMethod: args.paymentMethod } : {}),
 			status: "paid",
 		});

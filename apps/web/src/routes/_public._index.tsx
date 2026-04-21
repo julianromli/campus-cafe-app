@@ -42,7 +42,7 @@ export default function HomePage() {
 	return (
 		<div className="flex flex-col gap-10 pb-16 sm:gap-16">
 			{/* Modern App-Style Hero */}
-			<section className="relative -mx-4 flex min-h-[500px] flex-col justify-end overflow-hidden px-4 pb-8 pt-24 sm:mx-0 sm:min-h-[600px] sm:rounded-[2.5rem] sm:p-12">
+			<section className="relative -mx-4 flex min-h-[500px] flex-col justify-end overflow-hidden px-4 pt-24 pb-8 sm:mx-0 sm:min-h-[600px] sm:rounded-[2.5rem] sm:p-12">
 				{/* High-quality background image via Unsplash */}
 				<div className="absolute inset-0">
 					<img
@@ -81,7 +81,7 @@ export default function HomePage() {
 					</Badge>
 
 					<div className="flex flex-col gap-3">
-						<h1 className="font-heading text-4xl font-bold tracking-tight text-foreground sm:text-6xl md:text-7xl">
+						<h1 className="font-bold font-heading text-4xl text-foreground tracking-tight sm:text-6xl md:text-7xl">
 							Meet, Study &<br />
 							<span className="text-primary">Connect</span>
 						</h1>
@@ -103,7 +103,7 @@ export default function HomePage() {
 						<Button
 							size="lg"
 							variant="secondary"
-							className="h-14 rounded-2xl bg-background/80 font-medium backdrop-blur-md hover:bg-background/90 dark:bg-background/30 dark:hover:bg-background/40 sm:min-w-[180px]"
+							className="h-14 rounded-2xl bg-background/80 font-medium backdrop-blur-md hover:bg-background/90 sm:min-w-[180px] dark:bg-background/30 dark:hover:bg-background/40"
 							render={<Link to="/events" />}
 						>
 							Explore Events
@@ -116,7 +116,7 @@ export default function HomePage() {
 			<section className="flex flex-col gap-6 sm:gap-8">
 				<div className="flex items-center justify-between">
 					<div className="flex flex-col gap-1">
-						<h2 className="font-heading text-3xl font-semibold tracking-tight">
+						<h2 className="font-heading font-semibold text-3xl tracking-tight">
 							Trending Events
 						</h2>
 						<p className="text-muted-foreground">
@@ -125,7 +125,7 @@ export default function HomePage() {
 					</div>
 					<Button
 						variant="ghost"
-						className="hidden group sm:flex"
+						className="group hidden sm:flex"
 						render={<Link to="/events" />}
 					>
 						View all
@@ -151,10 +151,10 @@ export default function HomePage() {
 				) : (
 					<div className="relative -mx-4 sm:mx-0">
 						{/* Fading edges for carousel effect */}
-						<div className="pointer-events-none absolute bottom-0 left-0 top-0 z-10 w-8 bg-gradient-to-r from-background to-transparent sm:hidden" />
-						<div className="pointer-events-none absolute bottom-0 right-0 top-0 z-10 w-8 bg-gradient-to-l from-background to-transparent sm:hidden" />
+						<div className="pointer-events-none absolute top-0 bottom-0 left-0 z-10 w-8 bg-gradient-to-r from-background to-transparent sm:hidden" />
+						<div className="pointer-events-none absolute top-0 right-0 bottom-0 z-10 w-8 bg-gradient-to-l from-background to-transparent sm:hidden" />
 
-						<div className="flex gap-4 overflow-x-auto px-4 pb-8 pt-4 snap-x snap-mandatory sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-3 [&::-webkit-scrollbar]:hidden">
+						<div className="flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pt-4 pb-8 sm:grid sm:grid-cols-2 sm:px-0 lg:grid-cols-3 [&::-webkit-scrollbar]:hidden">
 							{previewEvents.map((event) => (
 								<div
 									key={event._id}
@@ -193,7 +193,7 @@ export default function HomePage() {
 			<section className="flex flex-col gap-6 sm:gap-8">
 				<div className="flex items-center justify-between">
 					<div className="flex flex-col gap-1">
-						<h2 className="font-heading text-3xl font-semibold tracking-tight">
+						<h2 className="font-heading font-semibold text-3xl tracking-tight">
 							Favorite Menu
 						</h2>
 						<p className="text-muted-foreground">
@@ -202,7 +202,7 @@ export default function HomePage() {
 					</div>
 					<Button
 						variant="ghost"
-						className="hidden group sm:flex"
+						className="group hidden sm:flex"
 						render={<Link to="/reserve" />}
 					>
 						Order now
@@ -213,7 +213,10 @@ export default function HomePage() {
 				{previewMenuItems === undefined ? (
 					<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
 						{Array.from({ length: 6 }).map((_, i) => (
-							<div key={i} className="h-28 rounded-3xl bg-muted/50 animate-pulse" />
+							<div
+								key={i}
+								className="h-28 animate-pulse rounded-3xl bg-muted/50"
+							/>
 						))}
 					</div>
 				) : previewMenuItems.length === 0 ? (
@@ -251,11 +254,11 @@ export default function HomePage() {
 								<div className="flex flex-1 flex-col justify-center">
 									<h3 className="font-semibold tracking-tight">{item.name}</h3>
 									{item.description && (
-										<p className="line-clamp-1 text-sm text-muted-foreground">
+										<p className="line-clamp-1 text-muted-foreground text-sm">
 											{item.description}
 										</p>
 									)}
-									<span className="mt-1.5 font-mono text-sm font-semibold text-primary">
+									<span className="mt-1.5 font-mono font-semibold text-primary text-sm">
 										{new Intl.NumberFormat("id-ID", {
 											currency: "IDR",
 											style: "currency",

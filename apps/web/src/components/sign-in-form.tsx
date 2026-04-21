@@ -124,9 +124,7 @@ export default function SignInForm({ onSwitchToSignUp }: SignInFormProps) {
 													value={field.state.value}
 													aria-invalid={invalid}
 													onBlur={field.handleBlur}
-													onChange={(e) =>
-														field.handleChange(e.target.value)
-													}
+													onChange={(e) => field.handleChange(e.target.value)}
 												/>
 												<FieldError errors={field.state.meta.errors} />
 											</FieldContent>
@@ -149,9 +147,7 @@ export default function SignInForm({ onSwitchToSignUp }: SignInFormProps) {
 													value={field.state.value}
 													aria-invalid={invalid}
 													onBlur={field.handleBlur}
-													onChange={(e) =>
-														field.handleChange(e.target.value)
-													}
+													onChange={(e) => field.handleChange(e.target.value)}
 												/>
 												<FieldError errors={field.state.meta.errors} />
 											</FieldContent>

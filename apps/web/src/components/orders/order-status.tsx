@@ -60,8 +60,7 @@ export default function OrderStatus({ className, status }: OrderStatusProps) {
 								<span
 									className={cn(
 										"mx-1 flex size-7 shrink-0 items-center justify-center rounded-full border-2 font-semibold text-[10px]",
-										done &&
-											"border-primary bg-primary/20 text-primary",
+										done && "border-primary bg-primary/20 text-primary",
 										current &&
 											!done &&
 											"animate-pulse border-primary bg-primary/25 text-primary",
