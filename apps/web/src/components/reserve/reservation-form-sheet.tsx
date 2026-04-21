@@ -309,7 +309,7 @@ export default function ReservationFormSheet({
 					}
 				}}
 			>
-				<SheetContent className="w-full p-0 sm:max-w-xl">
+				<SheetContent className="max-h-dvh w-full overflow-y-auto overscroll-y-contain p-0 sm:max-w-xl">
 					<SheetHeader>
 						<SheetTitle>
 							{table ? `Reserve ${table.label}` : "Reserve a table"}

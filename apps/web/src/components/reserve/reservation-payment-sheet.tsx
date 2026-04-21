@@ -247,7 +247,7 @@ export default function ReservationPaymentSheet({
 	return (
 		<>
 			<Sheet open={open} onOpenChange={onOpenChange}>
-				<SheetContent className="w-full p-0 sm:max-w-md">
+				<SheetContent className="max-h-dvh w-full overflow-y-auto overscroll-y-contain p-0 sm:max-w-md">
 					<SheetHeader>
 						<SheetTitle>Bayar reservasi dengan QRIS</SheetTitle>
 						<SheetDescription>
