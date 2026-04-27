@@ -974,7 +974,7 @@ export const recordPendingReservationPayment = internalMutation({
 		fee: v.optional(v.number()),
 		paymentMethod: v.string(),
 		paymentNumber: v.string(),
-		provider: v.literal("pakasir"),
+		provider: paymentProviderValidator,
 		refId: v.string(),
 		reservationId: v.id("reservations"),
 		totalPayment: v.number(),
