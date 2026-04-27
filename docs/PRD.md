@@ -5,7 +5,7 @@
 **Version:** 1.3  
 **Status:** Draft  
 **Date:** April 17, 2026  
-**Stack:** React Router · Convex · Better-Auth · shadcn/ui · TailwindCSS · Mayar.id · Cloudflare
+**Stack:** React Router · Convex · Better-Auth · shadcn/ui · TailwindCSS · Pakasir QRIS · Cloudflare
 
 ---
 
@@ -99,7 +99,7 @@ A full-stack web platform that unifies table reservations, **event discovery (in
 - Date/time picker supports same-day and advance bookings (configurable window, default: up to 7 days ahead).
 - Guest count must be ≤ table capacity; validation is enforced on frontend and backend.
 - If the table is booked by another user while the current customer is filling the form, the system surfaces an availability conflict error before reaching payment.
-- On successful Mayar.id webhook confirmation, table status changes to `"booked"` atomically.
+- On successful Pakasir webhook confirmation, table status changes to `"booked"` atomically.
 - Customer receives an on-screen confirmation and can view the booking under "My Reservations."
 - Booking includes a unique confirmation code (used for check-in).
 
@@ -115,7 +115,7 @@ A full-stack web platform that unifies table reservations, **event discovery (in
 - Cancellation is allowed up to a configurable cutoff (default: 2 hours before start time).
 - Upon cancellation, the customer sees an in-app message: *"Pesananmu telah dibatalkan. Refund akan diproses oleh tim kami dalam 1–3 hari kerja."*
 - Refund policy is displayed prominently on the checkout screen before payment is made.
-- When a customer cancels, the admin receives an **in-app notification** containing: customer name, table number, booking date/time, and payment amount — so admin can process the refund manually via the Mayar.id dashboard.
+- When a customer cancels, the admin receives an **in-app notification** containing: customer name, table number, booking date/time, and payment amount — so admin can process the refund manually via the Pakasir dashboard.
 - The cancelled booking does **not** automatically reopen the table to Available; table status is managed solely by admin/staff (see US-04b).
 
 ---
@@ -335,11 +335,11 @@ The following are explicitly **out of scope** for v1.0 to protect timeline and f
 │  ├── Auth layer (Better-Auth integration)         │
 │  ├── Queries    (tables, events, menu, orders)    │
 │  ├── Mutations  (book table, manage event listings, etc.)│
-│  └── Actions    (Mayar.id payment webhook handler)│
+│  └── Actions    (Pakasir payment actions + webhook handler)│
 └───────────────────┬─────────────────────────────┘
                     │
          ┌──────────▼──────────┐
-         │   Mayar.id           │
+         │   Pakasir QRIS       │
          │   (Payment Gateway)  │
          └─────────────────────┘
 ```
@@ -417,7 +417,8 @@ Indexes: `by_tableId`, `by_status`, `by_userId`
 #### `payments`
 
 ```
-_id, refId (Mayar.id), type: "reservation"|"food_order",
+_id, refId (Pakasir order_id), provider: "pakasir",
+type: "reservation"|"food_order",
 targetId, amount, currency: "IDR", status: "pending"|"paid"|"failed"|"refunded", createdAt
 ```
 
@@ -425,13 +426,13 @@ Indexes: `by_refId`, `by_targetId`
 
 ### 5.3 Integration Points
 
-#### Mayar.id Payment Gateway
+#### Pakasir QRIS Payment Gateway
 
-- **Payment flow:** Frontend initiates payment → Convex Action creates payment link via Mayar.id API → Customer redirected to Mayar.id hosted checkout → Mayar.id fires `payment.received` webhook to Convex HTTP Action → Convex verifies payload → confirms booking (e.g. table reservation) atomically. Event listings do not use Mayar for ticketing.
-- **Webhook security:** Verify Mayar.id signature header on every inbound event; reject requests without a valid signature.
-- **Idempotency:** Webhook handler checks if `transactionId` was already processed before mutating state, preventing duplicate confirmations.
-- **Refund policy:** Refunds are **fully manual** — no Refund API is used. When a cancellation occurs: (1) app shows customer a message confirming the cancellation and expected refund timeline, (2) admin receives an in-app notification with transaction details, (3) admin processes the refund manually via the Mayar.id merchant dashboard.
-- **Supported payment methods:** QRIS, bank transfer, e-wallet — all handled natively by Mayar.id checkout; no custom payment UI required.
+- **Payment flow:** Frontend initiates payment → Convex Action creates a Pakasir QRIS transaction → Customer pays from the in-app QR sheet → Pakasir fires a webhook to Convex HTTP Action → Convex re-checks `transactiondetail` before confirming the booking atomically. Event listings do not use in-app payments.
+- **Webhook security:** Do not trust webhook bodies directly. Re-verify every Pakasir callback through `transactiondetail` and only confirm when project, order ID, amount, and completed status match the local pending payment.
+- **Idempotency:** Webhook handler checks if `order_id` was already processed before mutating state, preventing duplicate confirmations.
+- **Refund policy:** Refunds are **fully manual** — no Refund API is used. When a cancellation occurs: (1) app shows customer a message confirming the cancellation and expected refund timeline, (2) admin receives an in-app notification with transaction details, (3) admin processes the refund manually via the Pakasir merchant dashboard.
+- **Supported payment method:** QRIS via Pakasir; no other payment gateway is part of the active product scope.
 
 #### Better-Auth + Convex
 
@@ -450,7 +451,7 @@ Indexes: `by_refId`, `by_targetId`
 | Concern                      | Mitigation                                                                                   |
 | ---------------------------- | -------------------------------------------------------------------------------------------- |
 | Unauthorized role escalation | Role stored server-side in Convex; never trust client-supplied role claims                   |
-| Payment tampering            | Booking confirmed only after Mayar.id webhook with valid signature; never on client callback |
+| Payment tampering            | Booking confirmed only after Pakasir webhook payload is re-verified via `transactiondetail`; never on client callback |
 | PII exposure                 | `users` table readable only by the owner and admins; staff cannot read other users' data     |
 | OWASP Top 10                 | All mutations validate arguments via `v` (Convex validators); no raw string SQL              |
 | HTTPS everywhere             | Cloudflare terminates TLS; no mixed content                                                  |
@@ -476,7 +477,7 @@ Indexes: `by_refId`, `by_targetId`
 
 | Risk                                           | Probability | Impact                                          | Mitigation                                                                                             |
 | ---------------------------------------------- | ----------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Mayar.id webhook delivery failure              | Medium      | High — booking not confirmed                    | Implement idempotent webhook handler + polling fallback; expose manual "sync payment" button for admin |
+| Pakasir webhook delivery failure               | Medium      | High — booking not confirmed                    | Implement idempotent webhook handler + polling fallback; expose manual "sync payment" button for admin |
 | Double-booking race condition                  | Low         | High — two users book same table simultaneously | Use Convex transaction in the `bookTable` mutation to check availability and write atomically          |
 | Convex cold-start latency on first load        | Low         | Medium                                          | Pre-fetch critical queries (menu, table list) at app shell level                                       |
 | Table layout doesn't match real cafe           | Medium      | Medium (UX confusion)                           | Admin layout editor built early; demo walkthrough with owner before launch                             |
@@ -493,7 +494,7 @@ Indexes: `by_refId`, `by_targetId`
 - Table layout admin editor
 - Customer-facing interactive floor map
 - Table reservation flow (date/time/guest count)
-- Mayar.id payment integration (reservation)
+- Pakasir QRIS payment integration (reservation)
 - Real-time table status updates
 - Basic admin reservation management view
 
@@ -533,7 +534,7 @@ Indexes: `by_refId`, `by_targetId`
 | #     | Question                                             | Decision                                                                                                                                                   |
 | ----- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | ~~1~~ | Time slot model for reservations?                    | **Model C** — Customer picks start time + duration (1 / 2 / 3 hours)                                                                                       |
-| ~~2~~ | Refund policy for paid **table** reservations? | **Manual** — App shows cancellation message to customer; admin receives in-app notification and processes refund manually via Mayar.id dashboard (in-app event ticketing N/A) |
+| ~~2~~ | Refund policy for paid **table** reservations? | **Manual** — App shows cancellation message to customer; admin receives in-app notification and processes refund manually via Pakasir dashboard (in-app event ticketing N/A) |
 | ~~3~~ | Turnover time / minimum booking duration?            | **None** — Table availability is controlled entirely by admin/staff. No automatic release; staff manually marks a table as Available after customer leaves |
 
 

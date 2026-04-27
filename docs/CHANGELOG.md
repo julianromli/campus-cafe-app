@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-04-27
+
+### Pakasir-only payment focus
+- **Payment provider model (`packages/backend/convex/schema.ts`, `packages/backend/convex/payments.ts`):** narrowed all new payment-provider validation to Pakasir while keeping legacy Mayar rows readable during production reconciliation. Active reservation checkout, QRIS resume, webhook, cancel, and manual sync remain Pakasir-only.
+- **Product/operator docs (`docs/PRD.md`, `docs/BACKLOG.md`, `docs/DESIGN.md`, `docs/QA-RUN.md`):** replaced stale Mayar payment instructions with Pakasir QRIS flow details, Pakasir webhook route `/pakasir/webhook`, Pakasir env vars, and legacy Mayar follow-up notes.
+
 ## 2026-04-19
 
 ### Convex dev unblocked

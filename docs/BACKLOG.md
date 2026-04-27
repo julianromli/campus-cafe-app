@@ -25,7 +25,7 @@
 | B-010 | Admin: table layout editor UI                                 | Tables        | ✅ Done      | P0       | B-009, B-006               |
 | B-011 | Customer: interactive floor plan                              | Tables        | ✅ Done      | P0       | B-009, B-006               |
 | B-012 | Reservations — Convex queries & mutations                     | Tables        | ✅ Done      | P0       | B-001, B-002, B-009        |
-| B-013 | Mayar.id payment — actions & webhook handler                  | Tables        | ✅ Done      | P0       | B-001, B-012               |
+| B-013 | Pakasir QRIS payment — actions & webhook handler              | Tables        | ✅ Done      | P0       | B-001, B-012               |
 | B-014 | Reservation form + booking flow UI                            | Tables        | ✅ Done      | P0       | B-012, B-013, B-011        |
 | B-015 | My Reservations page (customer)                               | Tables        | ✅ Done      | P0       | B-012, B-006               |
 | B-016 | Staff/Admin: live reservation operations board                | Tables        | ✅ Done      | P0       | B-012, B-009, B-006        |
@@ -88,7 +88,7 @@ Phase 8 (Polish):       B-040, B-041, B-042, B-043
 | UI Components | shadcn/ui + TailwindCSS | `packages/ui/src/`                |
 | Backend       | Convex                  | `packages/backend/convex/`        |
 | Auth          | Better-Auth + Convex    | `packages/backend/convex/auth.ts` |
-| Payments      | Mayar.id                | Convex Action + HTTP webhook      |
+| Payments      | Pakasir QRIS            | Convex Action + HTTP webhook      |
 | Email         | Resend                  | Convex Action (`"use node"`)      |
 | Deployment    | Cloudflare (Alchemy)    | `apps/web/`                       |
 
@@ -224,7 +224,7 @@ export default defineSchema({
     .index("by_userId", ["userId"]),
 
   payments: defineTable({
-    refId: v.string(),           // Mayar.id transactionId
+    refId: v.string(),           // Pakasir order_id
     // PRD v1.3: only `reservation` + `food_order`; `event_ticket` was dropped.
     type: v.union(
       v.literal("reservation"),
@@ -570,24 +570,23 @@ Admin routes (requires role: admin):
 
 ---
 
-### B-013 · Mayar.id Payment — Actions & Webhook Handler
+### B-013 · Pakasir QRIS Payment — Actions & Webhook Handler
 
 **Status:** ✅ Done | **Priority:** P0 | **Depends on:** B-001, B-012
 
 **Files to create/edit:**
 
-`**packages/backend/convex/payments.ts`** (action file — `"use node"` required for fetch):
+`**packages/backend/convex/payments.ts`**:
 
 ```ts
-"use node";
 // Actions (called from frontend):
-// - createReservationPaymentLink({ reservationId }):
+// - startReservationCheckout({ reservationId }):
 //     1. requireAuth
 //     2. Fetch reservation, verify it belongs to current user and is "pending"
-//     3. POST to https://api.mayar.id/hl/v1/payment-link/create with:
-//        { name, amount, customerName, customerEmail, redirectUrl, metadata: { reservationId } }
-//     4. Insert payments record with status="pending"
-//     5. Return { paymentUrl }
+//     3. POST to Pakasir transactioncreate/qris with:
+//        { project, order_id, amount, api_key }
+//     4. Insert payments record with status="pending" and provider="pakasir"
+//     5. Return the QRIS checkout session for the in-app payment sheet
 //
 // (PRD v1.3: no in-app event ticket payments — omit createEventPaymentLink or keep only if legacy code requires it)
 ```
@@ -595,25 +594,24 @@ Admin routes (requires role: admin):
 `**packages/backend/convex/http.ts**` (edit existing):
 
 ```ts
-// Add HTTP route: POST /mayar/webhook
+// Add HTTP route: POST /pakasir/webhook
 // Handler:
 //   1. Read body as JSON
-//   2. Verify Mayar.id signature header (HMAC or token — check Mayar.id docs)
-//   3. If event !== "payment.received" or status !== "SUCCESS": return 200 immediately (no-op)
-//   4. Extract transactionId and metadata.reservationId (table reservations only per PRD v1.3)
-//   5. Check payments table by refId — if already "paid", return 200 (idempotency)
-//   6. Call internal.reservations.confirm({ reservationId, paymentRef: transactionId })
-//   7. Update payments record status to "paid"
-//   8. Schedule email confirmation (internal.emails.sendBookingConfirmation)
-//   9. Return 200
+//   2. Extract project, order_id, amount, and status
+//   3. Re-verify via Pakasir transactiondetail; reject mismatched project/order/amount/status
+//   4. Check payments table by refId — if already "paid", return 200 (idempotency)
+//   5. Call internal.reservations.confirm({ reservationId, paymentRef: order_id })
+//   6. Update payments record status to "paid"
+//   7. Schedule email confirmation (internal.emails.sendBookingConfirmation)
+//   8. Return 200
 ```
 
 **Environment variables needed:**
 
-- `MAYAR_API_KEY` — Mayar.id API key
-- `MAYAR_WEBHOOK_SECRET` — for signature verification
+- `PAKASIR_PROJECT` — Pakasir project slug
+- `PAKASIR_API_KEY` — Pakasir API key for create/detail/cancel calls
 
-**Done when:** A simulated webhook POST to `/mayar/webhook` with a valid payload correctly changes a pending reservation to confirmed and the table to booked.
+**Done when:** A simulated webhook POST to `/pakasir/webhook` that verifies through `transactiondetail` correctly changes a pending reservation to confirmed and the table to booked.
 
 ---
 
@@ -637,13 +635,13 @@ This is a slide-over panel (shadcn `Sheet`) that opens when customer clicks a ta
 **On submit:**
 
 1. Call `api.reservations.create` — show error if availability conflict
-2. On success: call `api.payments.createReservationPaymentLink`
-3. Redirect to Mayar.id `paymentUrl` in same tab (`window.location.href = paymentUrl`)
-4. On return from Mayar.id (redirect URL `/my-reservations?success=true`): show success toast
+2. On success: call `api.payments.startReservationCheckout`
+3. Show the Pakasir QRIS payment sheet with countdown and cancel/resume controls
+4. On webhook or manual sync success, show the confirmed reservation in My Reservations
 
-**Loading state:** Disable form and show spinner while creating payment link.
+**Loading state:** Disable form and show spinner while creating checkout.
 
-**Done when:** Full flow works end-to-end from clicking a table to being redirected to Mayar.id.
+**Done when:** Full flow works end-to-end from clicking a table to paying through the Pakasir QRIS sheet.
 
 ---
 
@@ -704,7 +702,7 @@ This is a slide-over panel (shadcn `Sheet`) that opens when customer clicks a ta
 
 ## EPIC 2 — Events *(PRD v1.3: listing / information-only; outbound official URL)*
 
-> **Product scope:** No in-app event registration, ticketing, Mayar checkout for events, attendees lists, or post-registration flows. Implementation may require a **schema migration** on `events` (e.g. `externalUrl`, drop or ignore legacy registration fields) — align with [docs/PRD.md](PRD.md) §5.2.
+> **Product scope:** No in-app event registration, ticketing, payment checkout for events, attendees lists, or post-registration flows. Implementation may require a **schema migration** on `events` (e.g. `externalUrl`, drop or ignore legacy registration fields) — align with [docs/PRD.md](PRD.md) §5.2.
 
 ---
 
@@ -738,7 +736,7 @@ This is a slide-over panel (shadcn `Sheet`) that opens when customer clicks a ta
 
 **Status:** ⛔ Cancelled | **Priority:** — | **Depends on:** —
 
-Superseded by PRD v1.3. Do **not** implement `eventRegistrations.ts`, Mayar flows for event tickets, or seat decrement for events.
+Superseded by PRD v1.3. Do **not** implement `eventRegistrations.ts`, payment flows for event tickets, or seat decrement for events.
 
 ---
 
@@ -777,7 +775,7 @@ Superseded by PRD v1.3. Do **not** implement `eventRegistrations.ts`, Mayar flow
 - **Primary CTA:** opens `externalUrl` in a new tab (`rel="noopener noreferrer"`). Label e.g. "Buka halaman resmi event"
 - **Secondary (optional):** ghost "Reservasi meja" → `/reserve`
 
-**Not in scope:** login gate for viewing, ticket price, seats, Mayar, QR ticket, "sudah terdaftar"
+**Not in scope:** login gate for viewing, ticket price, seats, payment checkout, QR ticket, "sudah terdaftar"
 
 **Done when:** Customer can read the listing and reach the official external page in one click.
 
@@ -1135,7 +1133,7 @@ Superseded by PRD v1.3 — attendees live on the external platform.
 
 **Status:** ✅ Done | **Priority:** P1 | **Depends on:** B-008, B-013
 
-**Trigger:** Called from `packages/backend/convex/payments.ts` `mayarWebhook` after `reservations.confirm` and `payments.markPaid` succeed for `type === "reservation"`.
+**Trigger:** Called from `packages/backend/convex/payments.ts` `pakasirWebhook` after `reservations.confirm` and `payments.markPaid` succeed for `type === "reservation"`.
 
 **Implemented in `emails.ts`:** internal mutation `sendBookingConfirmation({ reservationId })`
 
@@ -1201,8 +1199,8 @@ Superseded by PRD v1.3 — no registrant lists in-app.
 
 List of all payments with their status. For payments with `status: "pending"`, show a "Sync Status" button that:
 
-1. Calls a Convex Action that queries the Mayar.id API for the current status of that `refId`
-2. If the API returns `SUCCESS`, calls `internal.reservations.confirm` *(table reservations only; no event-ticket path in PRD v1.3)*
+1. Calls a Convex Action that queries Pakasir `transactiondetail` for the current status of that `refId`
+2. If the API returns `completed`, calls `internal.reservations.confirm` *(table reservations only; no event-ticket path in PRD v1.3)*
 3. Shows the updated status inline
 
 This is the fallback for when the webhook fails to deliver.

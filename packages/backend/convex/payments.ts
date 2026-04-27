@@ -30,7 +30,8 @@ const paymentStatusValidator = v.union(
 	v.literal("refunded"),
 );
 
-const paymentProviderValidator = v.union(
+const paymentProviderValidator = v.literal("pakasir");
+const storedPaymentProviderValidator = v.union(
 	v.literal("mayar"),
 	v.literal("pakasir"),
 );
@@ -47,7 +48,7 @@ const paymentValidator = v.object({
 	fee: v.optional(v.number()),
 	paymentMethod: v.optional(v.string()),
 	paymentNumber: v.optional(v.string()),
-	provider: v.optional(paymentProviderValidator),
+	provider: v.optional(storedPaymentProviderValidator),
 	refId: v.string(),
 	status: paymentStatusValidator,
 	targetId: v.string(),
@@ -1299,7 +1300,7 @@ const paymentListRowValidator = v.object({
 	fee: v.optional(v.number()),
 	paymentMethod: v.optional(v.string()),
 	paymentNumber: v.optional(v.string()),
-	provider: v.optional(paymentProviderValidator),
+	provider: v.optional(storedPaymentProviderValidator),
 	refId: v.string(),
 	status: paymentStatusValidator,
 	tableLabel: v.optional(v.string()),

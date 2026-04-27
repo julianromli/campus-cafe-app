@@ -39,7 +39,7 @@ Setelah menjalankan demo seed Convex ([NOTES.md — Demo seed](NOTES.md)), ulang
 | Polish | Skeleton | **Pass** (smoke) | Loader/skeleton not explicitly asserted; pages reached without hang |
 | Polish | Responsive ~375px | **Pass** | `12-reserve-375.png`, `13-home-375.png` |
 | Polish | PWA / manifest | **Skipped** | Not run |
-| Non-functional | Mayar, webhooks, Resend, `SITE_URL`, Lighthouse | **Skipped** | Out of browser scope per plan |
+| Non-functional | Pakasir QRIS, webhooks, Resend, `SITE_URL`, Lighthouse | **Skipped** | Out of browser scope per plan |
 
 ## Manual follow-ups (you)
 

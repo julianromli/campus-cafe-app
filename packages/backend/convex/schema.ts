@@ -35,7 +35,9 @@ const orderType = v.union(v.literal("reserved"), v.literal("walkin"));
 
 const paymentType = v.union(v.literal("reservation"), v.literal("food_order"));
 
-const paymentProvider = v.union(v.literal("mayar"), v.literal("pakasir"));
+// Pakasir is the only active gateway. Mayar remains accepted only so existing
+// production payment rows can be read until operators reconcile legacy data.
+const paymentProvider = v.union(v.literal("pakasir"), v.literal("mayar"));
 
 const paymentStatus = v.union(
 	v.literal("pending"),

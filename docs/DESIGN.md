@@ -437,7 +437,7 @@ Desktop (right side sheet, 420px wide):    Mobile (bottom sheet, full-width):
 - **Duration:** 3-way segmented control button. Selected segment: amber fill, others: ghost
 - **Guest count:** `−` button + number display + `+` button. Max = table capacity (validated inline, shows "Melebihi kapasitas" if exceeded in red)
 - **Price:** shown dynamically (e.g., Rp 25.000 for 2 hours — configurable by admin)
-- **CTA:** amber full-width button. State changes: loading spinner while creating payment link, then redirects to Mayar.id
+- **CTA:** amber full-width button. State changes: loading spinner while creating checkout, then shows the in-app Pakasir QRIS payment sheet.
 - **Error state:** if table just became booked while form is open → toast "Meja ini baru saja dipesan. Silakan pilih meja lain." + sheet closes and highlights the conflict
 
 ---
@@ -596,7 +596,7 @@ Desktop (right side sheet, 420px wide):    Mobile (bottom sheet, full-width):
 - **Sticky footer (mobile):** fixed bottom bar with **one** primary CTA — no price, no seat bar, no ticket states
 - **Primary CTA:** opens `externalUrl` in a **new tab** (`rel="noopener noreferrer"`). Label examples: "Buka halaman resmi event", "Daftar & info di penyelenggara". **No** login gate for viewing; auth not required to read this page.
 - **Secondary CTA:** ghost button → `/reserve` (optional query `?date=…` prefill as nicety only)
-- **Out of scope UI:** ticket price display, seats remaining, "Penuh", Mayar checkout, QR ticket, "Sudah terdaftar"
+- **Out of scope UI:** ticket price display, seats remaining, "Penuh", in-app event checkout, QR ticket, "Sudah terdaftar"
 
 ---
 
