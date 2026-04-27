@@ -797,12 +797,11 @@ export const getReservationPayment = internalQuery({
 			return null;
 		}
 
-		if (reservation.paymentRef) {
+		const paymentRef = reservation.paymentRef;
+		if (paymentRef) {
 			return await ctx.db
 				.query("payments")
-				.withIndex("by_refId", (query) =>
-					query.eq("refId", reservation.paymentRef!),
-				)
+				.withIndex("by_refId", (query) => query.eq("refId", paymentRef))
 				.unique();
 		}
 
