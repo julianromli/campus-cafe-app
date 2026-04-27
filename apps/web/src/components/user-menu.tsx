@@ -76,16 +76,11 @@ export default function UserMenu() {
 							</DropdownMenuItem>
 						</>
 					) : null}
-					{user.role === "staff" || user.role === "admin" ? (
-						<DropdownMenuItem onClick={() => navigate("/staff/orders")}>
-							Staff Panel
-						</DropdownMenuItem>
-					) : null}
-					{user.role === "admin" ? (
-						<DropdownMenuItem onClick={() => navigate("/admin/dashboard")}>
-							Admin Panel
-						</DropdownMenuItem>
-					) : null}
+				{user.role === "staff" || user.role === "admin" ? (
+					<DropdownMenuItem onClick={() => navigate("/panel/dashboard")}>
+						Panel
+					</DropdownMenuItem>
+				) : null}
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
 						variant="destructive"

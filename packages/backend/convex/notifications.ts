@@ -26,14 +26,7 @@ const notificationDocValidator = v.object({
 	type: v.string(),
 });
 
-function formatIdr(amount: number): string {
-	return new Intl.NumberFormat("id-ID", {
-		currency: "IDR",
-		maximumFractionDigits: 0,
-		minimumFractionDigits: 0,
-		style: "currency",
-	}).format(amount);
-}
+import { formatIdr } from "./lib/format-idr";
 
 export const listMine = query({
 	args: {},

@@ -1331,7 +1331,7 @@ export const listAllPayments = query({
 	},
 	returns: paginatedPaymentsValidator,
 	handler: async (ctx, args) => {
-		await requireRole(ctx, "admin");
+		await requireRole(ctx, "staff");
 
 		const base = ctx.db.query("payments").order("desc");
 		const filtered =

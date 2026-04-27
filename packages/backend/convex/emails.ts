@@ -33,14 +33,7 @@ function escapeHtml(value: string): string {
 		.replace(/'/g, "&#39;");
 }
 
-function formatIdr(amount: number): string {
-	return new Intl.NumberFormat("id-ID", {
-		currency: "IDR",
-		maximumFractionDigits: 0,
-		minimumFractionDigits: 0,
-		style: "currency",
-	}).format(amount);
-}
+import { formatIdr } from "./lib/format-idr";
 
 function formatDateTimeId(ms: number): { date: string; timeRange: string } {
 	const start = new Date(ms);

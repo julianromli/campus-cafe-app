@@ -145,7 +145,7 @@ export const listAll = query({
 	args: {},
 	returns: v.array(tableValidator),
 	handler: async (ctx) => {
-		await requireRole(ctx, "admin");
+		await requireRole(ctx, "staff");
 		return sortTables(await ctx.db.query("tables").collect());
 	},
 });

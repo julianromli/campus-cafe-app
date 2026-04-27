@@ -151,7 +151,7 @@ export const getByIdAdmin = query({
 	},
 	returns: v.union(eventDocValidator, v.null()),
 	handler: async (ctx, args) => {
-		await requireRole(ctx, "admin");
+		await requireRole(ctx, "staff");
 		return await ctx.db.get(args.id);
 	},
 });
@@ -160,7 +160,7 @@ export const listAllAdmin = query({
 	args: {},
 	returns: v.array(eventDocValidator),
 	handler: async (ctx) => {
-		await requireRole(ctx, "admin");
+		await requireRole(ctx, "staff");
 		const events = await ctx.db.query("events").collect();
 		return events.sort((a, b) => b.startTime - a.startTime);
 	},

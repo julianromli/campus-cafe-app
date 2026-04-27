@@ -79,7 +79,7 @@ export default function NotificationBell() {
 										onClick={() => {
 											void markRead({ notificationId: n._id });
 											if (n.metadata?.reservationId) {
-												navigate("/staff/reservations");
+												navigate("/panel/reservations");
 											}
 										}}
 									>

@@ -51,7 +51,7 @@ export const todayOverview = query({
 	},
 	returns: todayOverviewValidator,
 	handler: async (ctx, args) => {
-		await requireRole(ctx, "admin");
+		await requireRole(ctx, "staff");
 
 		const dayStart = getUtcDayStartMs(args.referenceTimestamp);
 		const dayEnd = dayStart + DAY_MS;
@@ -139,7 +139,7 @@ export const thirtyDayTrends = query({
 	},
 	returns: v.array(trendDayValidator),
 	handler: async (ctx, args) => {
-		await requireRole(ctx, "admin");
+		await requireRole(ctx, "staff");
 
 		const endDayStart = getUtcDayStartMs(args.referenceTimestamp);
 		const windowStartMs = endDayStart - 29 * DAY_MS;
